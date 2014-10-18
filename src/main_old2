@@ -1,0 +1,815 @@
+/* Code to compute the radiative transfer of Ly-alpha photons
+using a Monte Carlo algorithm. */
+
+
+// Writing since: 12/09/09 
+// Last Update: (still writing v0)
+
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+#include <time.h>
+#include <string.h>
+
+#include <gsl/gsl_rng.h>
+#include "allvars.h"
+#include "proto.h"
+int main(int argc, char *argv[])
+{
+
+	char ParFile[NCHARMAX],HFile[NCHARMAX],tabledir_aux[NCHARMAX],Tstr[NCHARMAX];
+	int Seed0,inter,interd;
+	cell *CellArr;
+	float pmin,pmax;
+	double xi,xi0,xi1,xi2,xi3,xi4,xi5,xi6,xi7,xp0;
+	int EscCond;
+	double x,t_0,t_used,t_av,H_x,tau0,s_sum,e_x,e_y,e_z,r_edge,xcrit;
+	double X,xp,ni,nj,nk,vbx,vby,vbz,nper_bx,nper_by,nper_bz,gf,npar,alpha_f,npar_f,nper_f,nfi,nfj,nfk,norm_f,npnorm;
+	double s,op_time,r0,sf,dnd,nu,nu0,nu_,vnorm,npern;
+	double vth,n_ko,nko0,nvpar,nvper,na,vpn;
+	double ki_x,ki_y,ki_z,ko_x,ko_y,ko_z,vbulk_x,vbulk_y,vbulk_z,vbulk0_x,vbulk0_y,vbulk0_z,vbulk1_x,vbulk1_y,vbulk1_z;
+	double rx0,ry0,rz0,rxf,ryf,rzf,radius,cx,cy,cz;
+	double th0,ph0,x0,y0,z0,th_;
+	double xcw,a_par,th_aux,th_range[2],u0,u_par,g_u,accept,u_p1,u_p2;
+	double s_nH,sx_cont,s_nd,g;
+	double upar,uper1,uper2,utot,alpha;
+	double k_p_par,k_p_per,mu,mu2,S_,ko1,ko2,ko3,k_po_par,k_po_per,k_o_par,k_o_per,b_ang;
+	double n1_i,n1_j,n1_k,n2_i,n2_j,n2_k,v_i,v_j,v_k,v_pi,v_pj,v_pk,v_po_i,v_po_j,v_po_k;
+	double a1,a2,a3,vpar_i,vpar_j,vpar_k,vper_i,vper_j,vper_k,v_ko,uper,vper;
+	double sq_mu,sq_mu2,sq_b,sq_a,sq_arg;
+	double dust_fac = ext_zstar/zstar,P_H;
+	long ip,i,j,k,idcurrent,idc,nscat;
+	const gsl_rng_type * T;
+	time_t t1,t2;
+	float *HGList;
+	double *HList, *DipList;
+
+
+	long ilow,ihigh;
+	double x_1,x_0,H1,H0,xl,Hl,xlow,xhigh,rvp,vpl,vp0l,vp1l,ran0l,ran1l,vp0h,vp1h,ran0h,ran1h,vplow,vphigh;
+	double xilow,xihigh,mulow,muhigh,hglow,hghigh,xabs,xpabs;
+	float tot_tab,used_tab;
+//
+	
+	xcrit = 0;
+	c = 299792.482;   // km s-1
+	
+	gsl_rng *r;
+    gsl_rng_env_setup();
+
+    T = gsl_rng_default;
+    r = gsl_rng_alloc (T);
+	
+   if(argc < 3)
+    {
+        printf(" Input parameter missing. \n ");
+		printf(" Usage: > LyaRt [ParFile] [SEED] \n Exiting...");
+        exit(0);
+    }
+
+
+	printf(" ####################################################################\n");
+	printf(" ##	LyaRT: Monte Carlo radiative transfer of Ly-alpha photons	   ##\n");
+	printf(" ## Ver 0.?    Last updated: 15/02/10 \n");
+	printf(" ####################################################################\n");
+
+
+/*	Paramter file is read, it defines most of the variables
+	found in allvars.h */
+
+	strcpy(ParFile,argv[1]);
+	Seed0 = atoi(argv[2]);
+
+	read_parameters(ParFile);
+
+	printf("Output File %s\n",OutShort);
+	printf("Parameter File %s\n",ParFile);
+
+	NCells = NCellX*NCellY*NCellZ;
+	CellArr = (cell*) malloc(NCells * sizeof(cell));
+	define_geometry(GeomName,CellArr);
+
+	printf("HI geometry: %s\n",GeomName);
+	dprintf(xSize);
+	dprintf(ySize);
+	dprintf(zSize);
+	dprintf(RSphere);
+
+	gsl_rng_set(r,Seed0);	//Initializing the random generator with seed Seed0?
+
+	//Finding range of emission probability in cells
+
+	pmin = CellArr[0].p_lya;
+	pmax = pmin;
+
+	for (i=1;i<NCells;i++)
+	{	
+		if(CellArr[i].p_lya < pmin)
+			pmin = CellArr[i].p_lya;
+		if(CellArr[i].p_lya > pmax)
+			pmax = CellArr[i].p_lya;
+	}
+
+	strcpy(tabledir_aux,tabledir);	
+	strcat(tabledir_aux,sxfile);
+	strcpy(HFile,tabledir_aux);	
+
+	if (Temp >= 0)
+		sprintf(Tstr,"%.2f",Temp);
+	else
+		sprintf(Tstr,"%.1f",Temp);
+
+	strcat(HFile,Tstr);
+
+	printf(" Storing tabulated data... \n");
+
+	HList = (double*) malloc(NTAB2*sizeof(double)*2);
+	DipList = (double*) malloc(NTAB1*2*sizeof(double));
+	HGList = (float*) malloc(NTAB2*2*sizeof(float));
+	
+	get_H(HFile,HList);
+	printf("GET_H read\n");
+	get_dipolar(DipList);	
+	printf("GET_DIPOLAR read\n");
+	get_HG(HGList);	
+	printf("GET_HG read\n");
+
+#ifdef TEST_RII
+	printf("TESTING REDISTRIBUTION FUNCTION for x0 = %f\n",x_test);
+#endif
+
+
+	//Loop over NPhotons
+	printf(" Loop over %ld photons started...\n",NPhotons);
+
+	cx = 0.;
+	cy = 0.;
+	cz = 0.;
+
+	H = vmax/RSphere;
+
+	if (vmax == 0)
+		Static = 1;
+
+	nu0 = 1216.;
+
+	for (ip=0;ip < NPhotons;ip++)
+	{
+
+		nscat = 0;
+		if (ip == 1)
+			printf("Estimated time to finish: %f [min] \n",op_time * (NPhotons-1));
+
+		(void) time(&t1);
+		printf("ip %ld\n",ip);
+
+		xi1 = gsl_rng_uniform (r) * (pmax-pmin) + pmin;
+		i = 0;
+
+		if (StartAtCenter== 1)
+		{
+			idc = (int) (NCells-1)/2;
+			rx0 = 0.;			
+			ry0 = 0.;			
+			rz0 = 0.;		
+			printf("Source at the center\n");	
+		}
+		else
+		{
+	
+			do {
+				xi2 = gsl_rng_uniform (r) * (NCells-1);
+				i++;
+			   } while ( CellArr[ (long) xi2].p_lya > xi1);
+		
+			idc = (int) xi2;
+			printf("%ld tries finding starting cell id %ld for photon %ld\n",i,xi2,ip);
+
+		    rx0 = (gsl_rng_uniform (r) - 0.5)* xSize;
+   		    ry0 = (gsl_rng_uniform (r) - 0.5)* ySize;
+   	    	rz0 = (gsl_rng_uniform (r) - 0.5)* zSize;
+		}
+
+		xi1 = gsl_rng_uniform (r);
+		xi2 = gsl_rng_uniform (r);
+		xi3 = gsl_rng_uniform (r);
+
+//		Initial position and angles:
+
+		a_par = 4.693e-4 * sqrt(1./CellArr[idc].T);
+
+		vth = 12.85 * sqrt(CellArr[idc].T);
+		
+		dnd = (vth*nu0)/c;
+
+		th0 = 2*Pi*xi2 - Pi;
+        ph0 = 2*Pi*xi2;
+
+        printf("Initial angles: %f %f\n",th0 * 180/Pi,ph0*180/Pi);
+        printf("Initial position: (%f %f %f)\n",(rx0),(ry0),(rz0));
+
+        ki_x = sin(th0)*cos(ph0);
+        ki_y = sin(th0)*sin(ph0);
+        ki_z = cos(th0);
+
+// 		Initial frequency
+
+		xp = 0; // initial frequency in the rest frame of the fluid
+        x = xp + (ki_x*CellArr[idc].vbulk[0] + ki_y*CellArr[idc].vbulk[1] \
+            + ki_z*CellArr[idc].vbulk[2])/vth;
+		xabs = fabs(x);
+
+/*
+ Here the trajectory of the photon is generated. It will end if
+ the photon is absorbed by dust, or when it is found to be in a cell
+ with id = -1 (outside the box)
+*/
+
+		rxf = rx0;
+		ryf = ry0;
+		rzf = rz0;
+		inter = 1;
+
+		vbulk0_x = 0;
+		vbulk0_y = 0;
+		vbulk0_z = 0;
+		radius = 0;
+
+		while(idc != -1)
+		{
+
+			ni = sin(th0)*cos(ph0);
+			nj = sin(th0)*sin(ph0);
+			nk = cos(th0);
+
+
+			
+
+			i = 0;
+			while (xp >= HList[i] && i < nHList)
+			{
+				x_0 = HList[i];
+				H0 = HList[i + NTAB2];
+				i++;
+			}
+			x_1 = HList[i];
+			H1 = HList[i+NTAB2];
+			H_x = (H1 - H0)/(x_1 - x_0) * (xp - x_1) + H1;
+			if (i == nHList)
+				H_x = H0;
+
+			t_0 = - log(gsl_rng_uniform (r));
+			s_nH = sx_const * pow(CellArr[idc].T,-0.5)*H_x*CellArr[idc].nH;
+			s_nd =  ext_zstar * CellArr[idc].z * CellArr[idc].nH;
+	
+			s_sum = s_nH + s_nd;
+
+			while(t_0 != -1)
+			{	
+
+				nu = x * dnd + nu0;
+// t_0 == -1 means that all the optical depth has been used.
+			
+		
+//	Distance travelled			
+
+				s = t_0 / s_sum;
+
+                rxf = rx0 + s*sin(th0)*cos(ph0);
+                ryf = ry0 + s*sin(th0)*sin(ph0);
+                rzf = rz0 + s*cos(th0);
+	
+				radius = sqrt( SQR(rxf) + SQR(ryf)+ SQR(rzf) );
+				EscCond = 0;
+/*
+				if (nscat > -1)
+				{
+					printf("********\n");
+					printf("Before scattering:\n");
+					dprinti(nscat);
+					dprintd(th0*180/Pi);	
+					dprintd(ph0*180/Pi);
+					dprintd(x);
+					dprintf(xp);
+					dprintd(s/RSphere);
+					dprintd(radius/RSphere);
+					dprintf(alpha_f*180/Pi);
+				}
+*/
+/*			
+				ni = sin(th0)*cos(ph0);
+				nj = sin(th0)*sin(ph0);
+				nk = cos(th0);
+*/	
+
+	if (Static == 1)
+			{
+				xp = x;
+				vbulk_x = 0;
+				vbulk_y = 0;
+				vbulk_z = 0;
+				vbulk0_x = 0;
+				vbulk0_y = 0;
+				vbulk0_z = 0;
+				vbx = 0;
+				vby = 0;
+				vbz = 0;
+				alpha_f = 0;
+			}
+			if (Static == 0)
+			{
+
+				vbulk_x = H*rxf - vbulk0_x;
+				vbulk_y = H*ryf - vbulk0_y;
+				vbulk_z = H*rzf - vbulk0_z;
+			
+				vnorm = sqrt(SQR(vbulk_x) + SQR(vbulk_y) + SQR(vbulk_z));
+
+				vbx = (vbulk_x == 0) ? 0: vbulk_x/vnorm;
+				vby = (vbulk_y == 0) ? 0: vbulk_y/vnorm;
+				vbz = (vbulk_z == 0) ? 0: vbulk_z/vnorm;
+		
+				gf = 1./sqrt(1 - SQR(H*radius/c));
+
+				npar = ni*vbx + nj*vby + nk*vbz;
+				alpha_f = acos(npar);
+
+				nper_bx = (alpha_f == 0) ? 0 : (ni - cos(alpha_f)*vbx)/sin(alpha_f);
+				nper_by = (alpha_f == 0) ? 0 : (nj - cos(alpha_f)*vby)/sin(alpha_f);
+				nper_bz = (alpha_f == 0) ? 0 : (nk - cos(alpha_f)*vbz)/sin(alpha_f);
+				
+				npern = sqrt( SQR(nper_bx) + SQR(nper_by) + SQR(nper_bz));
+
+				nper_bx = (alpha_f == 0 ) ? 0 : nper_bx/npern;
+				nper_by = (alpha_f == 0 ) ? 0 : nper_by/npern;
+				nper_bz = (alpha_f == 0 ) ? 0 : nper_bz/npern;
+	
+				npar_f = (c * cos(alpha_f) - H*radius)/(1 - cos(alpha_f)*H*radius/c);
+				nper_f = (c * sin(alpha_f))/(gf*(1 - cos(alpha_f)*H*radius/c));
+						
+				nfi = (1./c) * ( npar_f * vbx + nper_f * nper_bx);
+				nfj = (1./c) * ( npar_f * vby + nper_f * nper_by);
+				nfk = (1./c) * ( npar_f * vbz + nper_f * nper_bz);
+
+				norm_f = sqrt(SQR(nfi) + SQR(nfj) + SQR(nfk));
+
+				nfi = nfi/norm_f;
+				nfj = nfj/norm_f;
+				nfk = nfk/norm_f;
+
+				th0 = acos(nfk);
+				ph0 = atan2(nfj,nfi);
+				ph0 = (ph0 < 0) ? (ph0 + 2*Pi) : ph0;
+	
+				xp = x - (ni * vbulk_x + nj*vbulk_y + nk*vbulk_z)/vth;
+//				nu_ = nu * gf * (1 - (vbulk_x*ni + vbulk_y*nj + vbulk_z*nk)/c);
+//				xp = (nu_ - nu0)/dnd;
+
+
+	//			xp = xp - (ni * vbulk_x + nj*vbulk_y + nk*vbulk_z)/vth;
+			}
+
+
+
+				if (isnan(radius))
+				{
+					printf("ERROR: radius could not be calcuated, %f\n",radius);
+					dprintf(s);
+					dprintd(H_x);
+					dprintf(xp);
+					exit(0);
+				}
+
+				if (strcmp(GeomName,"HomSlab") == 0)
+				{
+					if (fabs(rzf) >= zSize/2.)
+						EscCond = 1;
+				}
+
+				if (strcmp(GeomName,"HomSphere") == 0)
+				{
+					if (radius >= RSphere)
+					{
+						
+						EscCond = 1;
+						dprintf(radius);
+						dprintf(RSphere);
+						dprinti(nscat);
+						dprintf(x);
+						dprintf(xp);
+						dprintf(vbulk_x);
+						dprintf(vbulk_y);
+						dprintf(vbulk_z);
+						dprintf(H*radius);
+						dprintd(log(H));
+						dprintf(th0*180/Pi);
+						dprintf(ph0*180/Pi);
+						dprintf(alpha_f*180/Pi);
+						
+					}
+				}
+
+
+
+                if (EscCond == 1)
+                {
+				
+#ifndef TEST_RII	
+					idc = -1;
+#endif
+					if (idc == -1)
+					{
+	//					if (Static == 0)
+	//						x = xp - (ni*vbulk0_x + nj*vbulk0_y + nk*vbulk0_z)/vth;
+
+						printf("Photon has escaped in %ld scatterings\n",nscat);
+						inter = 4;
+						(void) time(&t2);
+						op_time = (float) (t2-t1)/60.;
+						printf("Total calculation took %f minutes.\n",op_time);
+						if (strcmp(OutMode,"Long")==0)
+							record_data_long(nscat,ip,x,rxf,ryf,rzf,radius,upar,uper1,uper2,H_x,xp,\
+							alpha_f,th0,ph0,vbx,vby,vbz,ni,nj,nk,inter);
+						else
+							record_data_short(nscat,ip,x,rxf,ryf,rzf,radius,H_x,inter,op_time);
+						goto escape;
+						break;
+					}
+	
+                }
+                else
+                {
+				    t_0 = -1;			
+					rz0 = rzf;
+					rx0 = rxf;
+					ry0 = ryf;
+				}
+			}
+
+
+
+			P_H = s_nH / s_sum;
+			xi1 = gsl_rng_uniform (r);
+
+			if (strcmp(IncDust,"Yes")==0)
+				inter = (xi1 <= P_H)? 1 : 2 ;
+			else
+				inter = 1;
+			
+			nscat++;
+			switch(inter)	// inter = 1 means interacting with hydrogen, inter = 2 means dust.
+			{
+				case  1:
+			// Scattering with H atom
+//					printf("Hydrogen!\n");
+
+					xi3 = gsl_rng_uniform (r);
+					xi3 = (xi3 == 0.0) ? gsl_rng_uniform (r) : xi3;
+					xi4 = gsl_rng_uniform (r);
+					xi5 = gsl_rng_uniform (r);
+					xi6 = gsl_rng_uniform (r);
+					xi7 = gsl_rng_uniform (r);
+
+/* The following option should be only used for testing the redistribution function (Hummer, 1962)
+	x_test is defined in default_parameters.c */
+
+#ifdef TEST_RII
+	x = x_test;
+	xabs = fabs(x);	
+#endif
+
+					
+
+#ifdef USEREJECTION
+						upar = -999.0;
+						i = 0;
+						do
+						{
+							xi0 = gsl_rng_uniform (r);
+							xi1 = gsl_rng_uniform (r);
+							xi2 = gsl_rng_uniform (r);
+
+							upar = vp_rejection(xp,a_par,xi0,xi1,xi2);
+							i++;
+						} while(upar == -999.0);
+						if (i > 100000)
+							printf("VP_REJECTION TOOK %d tries to get upar = %f, x = %f,  nscatter = %d\n" \
+							 ,i,upar,xp,nscat);
+#endif
+
+					uper1 = sqrt(SQR(xcrit) -log(xi3))*cos(2*Pi*xi4);	
+					uper2 = sqrt(SQR(xcrit) -log(xi3))*sin(2*Pi*xi4);	
+
+					n1_i = sin(ph0);
+					n1_j = -cos(ph0);
+					n1_k = 0;
+		
+					n2_i = cos(ph0)*cos(th0);
+					n2_j = sin(ph0)*cos(th0); 
+					n2_k = -sin(th0);	
+
+					v_i = upar*sin(th0)*cos(ph0) + uper1 * n1_i + uper2 *n2_i ;
+					v_j = upar*sin(th0)*sin(ph0) + uper1 * n1_j + uper2 *n2_j ;
+					v_k = upar*cos(th0) + uper1 * n1_k + uper2 *n2_k;
+
+					utot = sqrt(SQR(v_i) + SQR(v_j) + SQR(v_k));
+					alpha = acos(upar/utot);
+
+					v_i = v_i/utot;
+					v_j = v_j/utot;
+					v_k = v_k/utot;
+
+					v_pi = (1./sin(alpha))* (sin(th0)*cos(ph0) - cos(alpha)*v_i);					
+					v_pj = (1./sin(alpha))* (sin(th0)*sin(ph0) - cos(alpha)*v_j);					
+					v_pk = (1./sin(alpha))* (cos(th0) - cos(alpha)*v_k);					
+
+					vpn = sqrt(	SQR(v_pi) + SQR(v_pj) + SQR(v_pk));
+					v_pi = v_pi/vpn;
+					v_pj = v_pj/vpn;
+					v_pk = v_pk/vpn;
+
+					g = 1./(sqrt(1 - SQR(utot*vth/c)));
+
+					k_p_par = (c*cos(alpha) - utot*vth)/(1 - (upar*vth/c));
+					k_p_per = (c*sin(alpha))/(g*(1 - (upar*vth/c)));
+
+					i = 0;
+					while (xi5 >= DipList[i] && i < ndip)
+					{
+						xilow = DipList[i];
+						mulow = DipList[i + NTAB1];
+						i++;
+					}
+					xihigh = DipList[i];
+					muhigh = DipList[i+NTAB1];
+					mu = (muhigh-mulow)/(xihigh-xilow) * (xi5 - xihigh) + muhigh;
+					if (i == ndip)
+						mu = mulow;
+
+					mu = acos(mu);
+					mu2 = 2*Pi*xi6;
+
+/*
+//					TESTING THE EQNS.
+//					**************
+					if (nscat >= 0)
+					{
+						mu = 0;	
+						dprintf(mu);
+					}
+//					**************
+*/
+					ko1 = (1./c)*(cos(mu) * k_p_par + sin(mu)*(k_p_per)*cos(mu2));
+					ko2 = (1./c)*(cos(mu) * k_p_per - sin(mu)*(k_p_par)*cos(mu2));
+					ko3 = sin(mu) * sin(mu2);
+
+					nko0 = sqrt( SQR(ko1) + SQR(ko2) + SQR(ko3));
+
+					ko1 = ko1/nko0;
+					ko2 = ko2/nko0;
+					ko3 = ko3/nko0;
+
+					th_ = acos(ko1);
+									
+					k_po_par = ko1;
+					k_po_per = sqrt(SQR(ko2) + SQR(ko3));
+//					k_po_per = ko2 + ko3;
+
+					k_o_par = (c*cos(th_) + utot*vth)/(1 + (utot*cos(th_)*vth)/c);
+					k_o_per = (c*sin(th_))/(g*(1 + (utot*cos(th_)*vth)/c));
+
+					v_po_i = (1./k_po_per) * (ko2*v_pi + ko3*(v_pk*v_j - v_k*v_pj));
+					v_po_j = (1./k_po_per) * (ko2*v_pj - ko3*(v_pk*v_i - v_k*v_pi));
+					v_po_k = (1./k_po_per) * (ko2*v_pk + ko3*(v_pj*v_i - v_j*v_pi));
+
+					ko_x = (1./c) * (k_o_par * v_i + k_o_per *v_po_i);	
+					ko_y = (1./c) * (k_o_par * v_j + k_o_per *v_po_j);	
+					ko_z = (1./c) * (k_o_par * v_k + k_o_per *v_po_k);	
+				
+					n_ko = sqrt( SQR(ko_x) + SQR(ko_y) + SQR(ko_z));
+	
+					ko_x = ko_x/n_ko;
+					ko_y = ko_y/n_ko;
+					ko_z = ko_z/n_ko;
+
+					v_ko = utot * (v_i*ko_x + v_j*ko_y + v_k*ko_z);
+
+					th0 = acos(ko_z);
+					ph0 = atan2(ko_y,ko_x);
+					ph0 = (ph0 < 0) ? (ph0 + 2*Pi) : ph0;
+
+
+				if (Static == 1)
+				{
+					x += v_ko - upar; 
+					xp = x;
+				}
+
+				if (Static == 0)
+				{
+					xp += v_ko - upar; 
+
+					vbulk0_x += vbulk_x;
+					vbulk0_y += vbulk_y;
+					vbulk0_z += vbulk_z;
+
+
+					ni = sin(th0)*cos(ph0);
+					nj = sin(th0)*sin(ph0);
+					nk = cos(th0);
+
+					npar = ni*vbx +nj*vby + nk*vbz;
+					alpha_f = acos(npar);
+					
+					nper_bx = (alpha_f == 0) ? 0 : (ni - cos(alpha_f)*vbx)/sin(alpha_f);
+					nper_by = (alpha_f == 0) ? 0 : (nj - cos(alpha_f)*vby)/sin(alpha_f);
+					nper_bz = (alpha_f == 0) ? 0 : (nk - cos(alpha_f)*vbz)/sin(alpha_f);
+
+					npern = sqrt( SQR(nper_bx) + SQR(nper_by) + SQR(nper_bz));
+	
+					nper_bx = (alpha_f == 0 ) ? 0 : nper_bx/npern;
+					nper_by = (alpha_f == 0 ) ? 0 : nper_by/npern;
+					nper_bz = (alpha_f == 0 ) ? 0 : nper_bz/npern;
+
+					npar_f = (c * cos(alpha_f) + H*radius)/(1. + cos(alpha_f)*H*radius/c);
+					nper_f = (c * sin(alpha_f)) /(gf*(1. + cos(alpha_f)*H*radius/c));
+
+					nfi = (1./c) * ( npar_f * vbx + nper_f * nper_bx);
+					nfj = (1./c) * ( npar_f * vby + nper_f * nper_by);
+					nfk = (1./c) * ( npar_f * vbz + nper_f * nper_bz);
+
+					norm_f = sqrt(SQR(nfi) + SQR(nfj) + SQR(nfk));
+					
+					nfi = nfi/norm_f;
+					nfj = nfj/norm_f;
+					nfk = nfk/norm_f;
+
+					th0 = acos(nfk);
+					ph0 = atan2(nfj,nfi);
+
+					ph0 = (ph0 < 0) ? (ph0 + 2*Pi) : ph0;
+					nu = xp * dnd + nu0;
+					nu_ = nu * gf * (1 + (vbulk_x*ni + vbulk_y*nj + vbulk_z*nk)/c);
+					x = (nu_ - nu0)/dnd;
+
+					x = xp + (ni * vbulk_x + nj*vbulk_y + nk*vbulk_z)/vth;
+
+				}
+
+/*
+				if (nscat > 5)
+				{
+					printf("After scattering:\n");
+					dprintd(th0*180/Pi);	
+					dprintd(ph0*180/Pi);
+					dprintd(x);
+					dprintd(xp);
+					dprintd(H*radius/c);
+					dprintd(radius/RSphere);
+					dprintd(H_x);	
+					dprintd(H);
+					dprintf(alpha_f*180/Pi);
+					printf("************\n");
+			
+					if (nscat == 1000)
+						exit(0);		
+				}
+*/
+					xabs = fabs(x);
+					xpabs = fabs(xp);
+
+					xcrit = (xpabs < xcritval) ? xcritval : 0.;
+	
+					if (xpabs > 2000 || isnan(x) || n_ko > 1.01 || n_ko < 0.99)
+					{
+						printf("********************************************\n");
+						printf("ERROR: Frequency out of range, NAN reached or norm of ko != 1.0\n");
+						printf("Number of scatterings so far: %ld\n",nscat);
+						printf("Photon's location %f %f %f\n",(rxf),(ryf),(rzf));
+						dprintf(x);
+						dprintf(xp);
+						dprintf(n_ko);
+						dprintf(th0);
+						dprintf(ph0);
+						dprintf(upar);
+						dprintf(vbulk_x);
+						dprintf(vbulk_y);
+						dprintf(vbulk_z);
+						dprintf(g);
+						dprintf(gf);
+						dprintf(v_ko);
+						dprintf(xi1);
+						dprintf(xi2);
+						dprintf(xi3);
+						dprintf(xi4);
+						dprintf(xi5);
+						dprintf(xi6);
+						dprintf(xi7);
+					
+//						printf("x_prev = %f\n", x - v_ko + upar);
+						exit(0);
+						idc = -1;
+					}
+
+// New direction:
+
+#ifdef WRITEALL
+					record_data_long(nscat,ip,x,rxf,ryf,rzf,upar,uper1,uper2,H_x,inter);
+#endif
+
+#ifdef TEST_RII
+
+	record_data_long(nscat,ip,x,rxf,ryf,rzf,upar,uper1,uper2,H_x,inter);
+	if (nscat == nscatmax)
+	{
+		printf("Test of redistribution function for x = %f is done.\n",x_test);
+		exit(0);
+	}
+
+#endif
+
+				break;
+				
+				case 2:
+// Interaction with dust		
+					printf("Dust\n");
+
+					dprintf(xi1);
+					dprintf(P_H);
+					dprintf(s_nH);
+					dprintf(s_sum);
+					dprinti(nscat);	
+					
+					xi1 = gsl_rng_uniform (r);
+					xi2 = gsl_rng_uniform (r);
+					xi3 = gsl_rng_uniform (r);
+
+					interd = (xi1 <= Albedo) ? 1 : 0;
+					if (interd == 1)	//scattering
+					{
+
+						i = 0;
+						while (xi2 >= HGList[i] && i < nHG)
+					{
+						xilow = HGList[i];
+						hglow = HGList[i + NTAB2];
+						i++;
+					}
+
+					xihigh = HGList[i];
+					hghigh = HGList[i+NTAB2];
+
+					th0 = (hghigh-hglow)/(xihigh-xilow) * (xi2- xihigh) + hghigh;
+					if (i == nHG)
+						th0 = hglow;
+
+        				ph0 = 2*Pi*xi3;
+#ifdef WRITEALL
+						record_data_long(nscat,ip,x,rxf,ryf,rzf,upar,uper1,uper2,H_x,inter);
+#endif
+			
+
+					}
+						else 
+					{	
+						printf("Photon has been absorbed by dust after %ld scatters.\n",nscat);
+						inter = 3;
+						(void) time(&t2);
+						op_time = (float) (t2-t1)/60.;
+						printf("Total calculation took %f minutes.\n",op_time);
+
+//						if (strcmp(OutMode,"Long") == 0)
+//							record_data_long(nscat,ip,x,rxf,ryf,rzf,radius,upar,uper1,uper2,H_x,inter);
+//						else
+//							record_data_short(nscat,ip,x,rxf,ryf,radius,rzf,H_x,inter,op_time);
+	
+						idc = -1;
+					
+					}
+				break;
+			}			
+
+			if (nscat == 1000000 || nscat == 10000000 )
+			{
+				printf("********************************************\n");
+				printf("Number of scatterings so far: %ld\n",nscat);
+				printf("Photon's location %f %f %f\n",rxf,ryf,rzf);
+				dprintf(x);
+				dprintf(xp);
+				dprintf(th0);
+				dprintf(ph0);
+			}
+
+		if (strcmp(OutMode,"Long")==0)
+			record_data_long(nscat,ip,x,rxf,ryf,rzf,radius,upar,uper1,uper2,H_x,xp,\
+			alpha_f,th0,ph0,vbx,vby,vbz,ni,nj,nk,inter);
+
+		}				
+	escape:
+//		exit(0);
+	printf("\n");
+	}
+//End of Progra
+	return(0);
+}
