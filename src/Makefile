@@ -102,7 +102,8 @@ OBJS   = main.o  \
          	default_parameters.o read_parameters.o define_geometry.o \
 			record_data_long.o record_data_short.o record_data_pos.o \
 			get_H.o get_HG.o get_vp.o get_dipolar.o vp_rejection.o voigt.o lorentz.o \
-			ionization_eqns.o numerical.o find_edgecone.o
+			ionization_eqns.o numerical.o find_edgecone.o \
+			init_photon.o empty_cells.o crossing_cells.o scattering_hydrogen.o dust_interaction.o
 			
 
 INCL   =  proto.h allvars.h Makefile

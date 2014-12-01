@@ -294,7 +294,7 @@ void read_parameters(char *ParFile)
 
 }
 
-void print_parameters()
+void print_parameters(cell *CellArr)
 {
 
 	printf(" ####################################################################\n");

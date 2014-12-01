@@ -693,7 +693,7 @@ void define_geometry(char *GeomName, cell *CellArr)
 		CellArr[id].vbulk[0] = 0;
 	
 		dr = (RSphere-R_inner) / (NCells-2);
-
+		printf("dr for Biconical wind:%e\n",dr);
 //		H = 0.;
 //		H = vmax / RSphere;
 

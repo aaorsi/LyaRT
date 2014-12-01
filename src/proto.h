@@ -18,6 +18,11 @@ double voigt(double *,double );
 void lorentz(int );
 
 void find_edgecone(float ,float , float , float , float , float ,double[] );
+void init_photon(photon *, int , double , double , double );
+void empty_cells(photon *, int );
+double crossing_cells(photon *, int , int );
+void scattering_hydrogen(photon *, int );
+void dust_interaction(photon *, int );
 
 //	UV Background routines
 

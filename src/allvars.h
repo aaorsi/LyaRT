@@ -72,8 +72,18 @@ typedef struct {
 	long neig[6];
 } cell;
 
-
-
+typedef struct {
+	long nscat;
+	double x,y,z;
+	float ni;
+	float nj;
+	float nk;
+	float th;
+	float ph;
+	int idc;
+	float xp;
+} photon;
+	
 #define NZZ	50
 #define NEN 500
 
@@ -93,7 +103,7 @@ typedef struct {
 	char GHIFile[NCHARMAX],UVzFile[NCHARMAX],UVeFile[NCHARMAX], \
 		 UVspecFile[NCHARMAX];
 
-	char OutDir[NCHARMAX],tabledir[NCHARMAX],sxfile[NCHARMAX],HFile[NCHARMAX];
+	char OutDir[NCHARMAX],tabledir[NCHARMAX],sxfile[NCHARMAX],HFile[NCHARMAX],ParFile[NCHARMAX];
         char IncDust[NCHARMAX];
         
 	char GeomName[NCHARMAX],OutMode[NCHARMAX],OutLong[NCHARMAX],OutShort[NCHARMAX],Set_Tolerance[NCHARMAX];
@@ -115,3 +125,23 @@ double Temp,mean_nH,mean_z,xcritval,mean_nH_static,ColDens;
         float *XArr,*X0Arr,*PosArr,*AngleArr,*PosArrLong;
 	int *InterArr, *NscatArr;
 	double alpha_vprof, sigma_vprof,app_angle;
+long idc_old,idc,nbins,nout;
+double rx0,ry0,rz0,rxf,ryf,rzf,radius,cx,cy,cz,acrit,aarg;
+double r0,rE,a_,g_,b_,s_,px,py,pz,s1,s2,s3,s4,s5,px0,py0,pz0;
+double xi,xi0,xi1,xi2,xi3,xi4,xi5,xi6,xi7,xp0;
+double X,xp,xabs,xpabs;
+int Seed0,inter,interd,gtype;
+long flag_zero;
+double Inv_c,TPar,Arg1_uper,Arg2_uper,cosph0,sinph0,costh0,sinth0,cosalpha,sinalpha,Inv_sinalpha, \
+		cosmu,sinmu,cosmu2,sinmu2,costh_,sinth_,Inv_kpoper,gcond,garg;
+double x,t_0,t_used,t_av,H_x,tau0,s_sum,e_x,e_y,e_z,r_edge,xcrit;
+double vth,n_ko,nko0,nvpar,nvper,na,vpn;
+double s,op_time,sf,dnd,nup,nu0,nu_,vel;
+int EscCond,ObscuredCond;
+double Kth,zeta,th_c;
+double upar,uper1,uper2,utot,alpha;
+cell *CellArr;
+photon *P;
+float *HGList;
+double *HList, *DipList;
+int end_syg;
