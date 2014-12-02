@@ -90,18 +90,15 @@ void init_photon(photon *P, int ip, double xi0, double xi1, double xi2)
 // Flat Continuum
 #ifdef XCONTINUUM
 		//dX=96.0;
-		xi1 = gsl_rng_uniform (r);
 		
-		xp = (xi1-0.5)*dX;
+		xp = (xi5-0.5)*dX;
 		xp0=xp; 
 #endif		
 		
 #ifdef XINDIST
 		
-		xi1 = gsl_rng_uniform (r);
-		xi2 = gsl_rng_uniform (r);
 		
-		xp	= x_mean + Vrot * sqrt(-2*log(xi1))*cos(2*Pi*xi2);
+		xp	= x_mean + Vrot * sqrt(-2*log(xi3))*cos(2*Pi*xi4);
 		xp0=xp; 
 		dprintl(ip);
 		dprintd(xp);

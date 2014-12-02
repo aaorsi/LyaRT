@@ -261,6 +261,12 @@ int main(int argc, char *argv[])
 		xi0 = gsl_rng_uniform (r);
 		xi1 = gsl_rng_uniform (r);
 		xi2 = gsl_rng_uniform (r);
+
+			
+		xi3 = gsl_rng_uniform (r);
+		xi4 = gsl_rng_uniform (r);
+		xi5 = gsl_rng_uniform (r);
+
 		init_photon(P,ip, xi0, xi1, xi2);		  
 
 		dnd = (vth*nu0)/c;
