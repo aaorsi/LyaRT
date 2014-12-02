@@ -12,16 +12,6 @@ void dust_interaction(photon *P, int ip)
 {
 	double xilow,xihigh,mulow,muhigh,hglow,hghigh;
 	long i;
-	const gsl_rng_type * T;
-
-	gsl_rng *r;
-	gsl_rng_env_setup();
-    T = gsl_rng_default;
-    r = gsl_rng_alloc (T);
-	
-	xi1 = gsl_rng_uniform (r);
-	xi2 = gsl_rng_uniform (r);
-	xi3 = gsl_rng_uniform (r);
 
 	interd = (xi1 <= Albedo) ? 1 : 0;
 	if (interd == 1)	//scattering

@@ -11,7 +11,6 @@
 void scattering_hydrogen(photon *P, int ip)
 {
 
-	const gsl_rng_type * T;
 	double k_p_par,k_p_per,mu,mu2,ko1,ko2,ko3,k_po_par,k_po_per,k_o_par,k_o_per,b_ang;
 	double n1_i,n1_j,n1_k,n2_i,n2_j,n2_k,v_i,v_j,v_k,v_pi,v_pj,v_pk,v_po_i,v_po_j,v_po_k;
 	double xilow,xihigh,mulow,muhigh,hglow,hghigh;
@@ -22,31 +21,12 @@ void scattering_hydrogen(photon *P, int ip)
 	float g;
 	long i;
 
-	gsl_rng *r;
-	gsl_rng_env_setup();
-    T = gsl_rng_default;
-    r = gsl_rng_alloc (T);
 	
 #ifdef TEST_RII
 	xp = x_test;
 	xabs = fabs(xp);	
 #endif
 
-#ifdef USEREJECTION
-	upar = -999.0;
-	i = 0;
-	do
-	{
-		xi0 = gsl_rng_uniform (r);
-		xi1 = gsl_rng_uniform (r);
-		xi2 = gsl_rng_uniform (r);
-		upar = vp_rejection(xp,a_par,xi0,xi1,xi2);
-		i++;
-	} while(upar == -999.0);
-//	if (i > 100000)
-//						printf("VP_REJECTION TOOK %d tries to get upar = %f, x = %f,  nscatter = %d\n" \
-						 ,i,upar,xp,nscat);
-#endif
 
 	cosph0 = cos(ph0);
 	sinph0 = sin(ph0);

@@ -401,7 +401,23 @@ escape:
 			switch(inter)	// inter = 1 means interacting with hydrogen, inter = 2 means dust.
 			{
 				case  1:
-				
+	
+#ifdef USEREJECTION
+			upar = -999.0;
+			i = 0;
+			do
+			{
+				xi0 = gsl_rng_uniform (r);
+				xi1 = gsl_rng_uniform (r);
+				xi2 = gsl_rng_uniform (r);
+				upar = vp_rejection(xp,a_par,xi0,xi1,xi2);
+				i++;
+			} while(upar == -999.0);
+//	if (i > 100000)
+//						printf("VP_REJECTION TOOK %d tries to get upar = %f, x = %f,  nscatter = %d\n" \
+						 ,i,upar,xp,nscat);
+#endif
+			
 				xi0 = gsl_rng_uniform (r);
 				xi1 = gsl_rng_uniform (r);
 				xi2 = gsl_rng_uniform (r);
@@ -416,6 +432,10 @@ escape:
 				break;
 				
 				case 2:
+				xi1 = gsl_rng_uniform (r);
+				xi2 = gsl_rng_uniform (r);
+				xi3 = gsl_rng_uniform (r);
+
 				dust_interaction(P,ip);
 				if (end_syg ==1)
 					goto end;
