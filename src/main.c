@@ -185,7 +185,7 @@ int main(int argc, char *argv[])
 #ifdef GETPOSDIR
 	PosArr		= (float *) malloc(NPhotons*3*sizeof(float));
 	AngleArr	= (float *) malloc(NPhotons*2*sizeof(float));
-	PosArrLong	= (float *) malloc(NPhotons*NScatRec*3*sizeof(float));
+//	PosArrLong	= (float *) malloc(NPhotons*NScatRec*3*sizeof(float));
 #endif
 
 	for (i = 0; i< NPhotons; i++)
@@ -200,12 +200,13 @@ int main(int argc, char *argv[])
 		PosArr[3*i+2]	= 0;
 		AngleArr[2*i]	= 0;
 		AngleArr[2*i+1]	= 0;
-		for (j = 0;j<NScatRec;j++)
+/*		for (j = 0;j<NScatRec;j++)
 		{
 			PosArrLong[0+ 3*i + 3*NPhotons*j] = 0;
 			PosArrLong[1+ 3*i + 3*NPhotons*j] = 0;
 			PosArrLong[2+ 3*i + 3*NPhotons*j] = 0;
 		}
+*/
 #endif
 	}
 
