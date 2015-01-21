@@ -510,7 +510,7 @@ escape:
 				free(PosArr);
 				free(AngleArr);
 #else
-				record_data_short();
+//				record_data_short();
 #endif
 				free(HList);
 				free(DipList);

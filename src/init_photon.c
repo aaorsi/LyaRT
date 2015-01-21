@@ -10,7 +10,7 @@
 
 void init_photon(photon *P, int ip, double xi0, double xi1, double xi2)
 {
-	double xi,xp0;
+	double xi;
 	int upcone,i;
 
 	
