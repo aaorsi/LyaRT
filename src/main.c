@@ -346,8 +346,8 @@ int main(int argc, char *argv[])
    	   			{
 escape:
 	
-					x = P[ip].xp + (P[ip].ni*vbulk_x + P[ip].nj*vbulk_y + P[ip].nk*vbulk_z)/vth;
-
+					P[ip].xp += (P[ip].ni*vbulk_x + P[ip].nj*vbulk_y + P[ip].nk*vbulk_z)/vth;
+					x = P[ip].xp;
 //				x = c*(g*nup - nu0)/(vth*nu0) - g*(nup/nu0)*(ni*vbulk_x + nj*vbulk_y + nk*vbulk_z)/vth;
 
 //				dprintd(x);
@@ -366,7 +366,7 @@ escape:
 					else
 					{
 //					record_data_short(nscat,ip,x,rxf,ryf,rzf,radius,H_x,inter,op_time,flag_zero);
-						XArr[ip] = x;
+						XArr[ip] = P[ip].xp;
 						X0Arr[ip]=xp0;
 						InterArr[ip] = inter;
 						NscatArr[ip] = nscat;
@@ -417,7 +417,7 @@ escape:
 				xi0 = gsl_rng_uniform (r);
 				xi1 = gsl_rng_uniform (r);
 				xi2 = gsl_rng_uniform (r);
-				upar = vp_rejection(xp,a_par,xi0,xi1,xi2);
+				upar = vp_rejection(P[ip].xp,a_par,xi0,xi1,xi2);
 				i++;
 			} while(upar == -999.0);
 //	if (i > 100000)
@@ -467,7 +467,7 @@ escape:
 #ifdef WRITEALL
 			if (ip < 1000)
 			{
-				x = P[ip].xp + (P[ip].ni*vbulk_x + P[ip].nj*vbulk_y + P[ip].nk*vbulk_z)/vth;
+				P[ip].xp += (P[ip].ni*vbulk_x + P[ip].nj*vbulk_y + P[ip].nk*vbulk_z)/vth;
 				record_data_long(nscat,ip,x,P[ip].x,P[ip].y,P[ip].z,r0,upar,uper1,uper2,H_x,\
 				P[ip].xp,inter);
 			}
@@ -538,7 +538,7 @@ escape:
 		}
 #endif
 
-	printf("%ld %f\n",ip,xp);
+	printf("%ld %f\n",ip,P[ip].xp);
 
 
 	}
