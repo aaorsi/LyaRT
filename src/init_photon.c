@@ -92,6 +92,7 @@ void init_photon(photon *P, int ip, double xi0, double xi1, double xi2)
 		//dX=96.0;
 		
 		xp = (xi5-0.5)*dX;
+		P[ip].xp = xp;
 		xp0=xp; 
 #endif		
 		
