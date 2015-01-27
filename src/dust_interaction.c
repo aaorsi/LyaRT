@@ -30,11 +30,15 @@ void dust_interaction(photon *P, int ip)
 		if (i == nHG)
 			th0 = hglow;
    		ph0 = 2*Pi*xi3;
+
+		P[ip].th = th0;
+		P[ip].ph = ph0;
+		end_syg = 0;
 	}
 	else 
 	{
 		absorbed:
-		x = xp + (ni*vbulk_x + nj*vbulk_y + nk*vbulk_z)/vth;
+		P[ip].xp += (ni*vbulk_x + nj*vbulk_y + nk*vbulk_z)/vth;
 //			printf("Photon has been absorbed by dust after %ld scatters.\n",nscat);
 		inter = 3;
 //		(void) time(&t2);
@@ -51,7 +55,7 @@ void dust_interaction(photon *P, int ip)
 //							record_data_short(nscat,ip,x,rxf,ryf,rzf,radius,H_x,inter,flag_zero,op_time);
 //							record_data_short(nscat,ip,x,ph0,th0,radius,inter,op_time,flag_zero);
 
-		XArr[ip] = x;
+		XArr[ip] = P[ip].xp;
 		X0Arr[ip]=xp0;
 		InterArr[ip] = inter;
 		NscatArr[ip] = nscat;
