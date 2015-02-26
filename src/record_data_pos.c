@@ -46,6 +46,7 @@ void record_data_pos(long Np)
 		fwrite(InterArr,sizeof(int),Np,fout);
 		fwrite(XArr,sizeof(float),Np,fout);
 		fwrite(NscatArr,sizeof(int),Np,fout);
+		fwrite(BscatArr,sizeof(int),Np,fout);
 // Los siguientes dos sirven principalmente para crear mapas de brillos superficial, puedes comentarlos.
 		fwrite(PosArr,sizeof(float),Np*3,fout);
 		fwrite(AngleArr,sizeof(float),Np*2,fout);

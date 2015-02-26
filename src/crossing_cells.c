@@ -41,13 +41,25 @@ double crossing_cells(photon *P, int gtype, int ip)
 			rlow = ( comp > -0.01) ? CellArr[idc].r : CellArr[idc-1].r;
 			rhigh = rlow + dr;
 
-			aarg = rlow/r0;
-			acrit = (aarg >= 1.0) ? Pi/2. : ( (aarg <= -1.00) ? -Pi/2. : asin(aarg) );
 			garg = -px0*ni  -py0*nj  -pz0*nk;
 			g_   = (garg >= 1.0) ? 0. : ((garg <= -1.0) ? Pi : acos(garg));
-			comp = (fabs(garg) > 1) ? fabs(garg) - 1.0 : 1.0 - fabs(garg);
-			rE   = (comp < 1e-4) ? ((g_ >= acrit) ? rhigh : rlow) : -1.0;
-			s_   = (garg > 0) ? (r0 - rlow) : (rhigh - r0);		// s_, the distance traveled, is recomputed if rE = -1 here.
+			if (idc > 0)
+			{
+				aarg = rlow/r0;
+				acrit = (aarg >= 1.0) ? Pi/2. : ( (aarg <= -1.00) ? -Pi/2. : asin(aarg) );
+				comp = (fabs(garg) > 1) ? fabs(garg) - 1.0 : 1.0 - fabs(garg);
+				rE   = (comp < 1e-4) ? ((g_ >= acrit) ? rhigh : rlow) : -1.0;
+				s_   = (garg > 0) ? (r0 - rlow) : (rhigh - r0);		// s_, the distance traveled, is recomputed if rE = -1 here.
+			}
+			else
+			{
+//	if the photon is in idc == 0				
+				rE = rhigh;
+				b2 = asin(r0 * sin(g_)/ rE);
+				b1 = Pi - (b2 + g_);
+				s_ = rE * sin(b1)/sin(g_);
+				acrit = 0.0;
+			}		
 
 //			When photon is not moving radially, identified by rE = -1:
 			if (idc > 0 && rE == -1.0)
@@ -79,16 +91,17 @@ double crossing_cells(photon *P, int gtype, int ip)
 				s_old = s_;
 				s_ = s;
 				t_0 = -1;
-
-							}
+				idc_old = idc;
+			
+			}
 
 			if (t_0 <= 0)
 				t_0 = -1;
 
 
 			P[ip].x +=  s_*P[ip].ni;
-        	P[ip].y +=  s_*P[ip].nj;
-	    	P[ip].z +=  s_*P[ip].nk;	
+      P[ip].y +=  s_*P[ip].nj;
+	    P[ip].z +=  s_*P[ip].nk;	
 
 			r0_old = r0;
 			r0 = sqrt( SQR(P[ip].x) + SQR(P[ip].y)+ SQR(P[ip].z));
@@ -115,16 +128,17 @@ double crossing_cells(photon *P, int gtype, int ip)
 			px0 = P[ip].x/r0;
 			py0 = P[ip].y/r0;
 			pz0 = P[ip].z/r0;
-	
-			vbulk0_x = vbulk_x;
-			vbulk0_y = vbulk_y;
-			vbulk0_z = vbulk_z;
-							
-			vbulk_x = px0 * CellArr[idc].vbulk[0];
-			vbulk_y = py0 * CellArr[idc].vbulk[0];
-			vbulk_z = pz0 * CellArr[idc].vbulk[0];
 			
-			P[ip].xp += (P[ip].ni * (vbulk0_x-vbulk_x) + P[ip].nj*(vbulk0_y-vbulk_y) + \
+				vbulk0_x = vbulk_x;
+				vbulk0_y = vbulk_y;
+				vbulk0_z = vbulk_z;
+							
+				vbulk_x = px0 * CellArr[idc].vbulk[0];
+				vbulk_y = py0 * CellArr[idc].vbulk[0];
+				vbulk_z = pz0 * CellArr[idc].vbulk[0];
+		
+//				if (idc != idc_old)
+					P[ip].xp += (P[ip].ni * (vbulk0_x-vbulk_x) + P[ip].nj*(vbulk0_y-vbulk_y) + \
 						P[ip].nk*(vbulk0_z-vbulk_z))/vth;
 
 			if isnan(P[ip].xp)
@@ -193,7 +207,16 @@ double crossing_cells(photon *P, int gtype, int ip)
 			vbulk_y = 0;
 			vbulk_z = 0;
 
-			if (fabs(rzf) >= zSize/2.)
+			P[ip].x +=  s*P[ip].ni;
+        	P[ip].y +=  s*P[ip].nj;
+	    	P[ip].z +=  s*P[ip].nk;	
+
+			r0_old = r0;
+			r0 = sqrt( SQR(P[ip].x) + SQR(P[ip].y)+ SQR(P[ip].z));
+
+			s_ = s;
+
+			if (fabs(P[ip].z) >= zSize/2.)
 			{
 				EscCond =  1;	
 				idc		= -1;	
@@ -208,7 +231,16 @@ double crossing_cells(photon *P, int gtype, int ip)
 			vbulk_y = 0;
 			vbulk_z = 0;
 
-			if (radius >= RSphere)
+			P[ip].x +=  s*P[ip].ni;
+      P[ip].y +=  s*P[ip].nj;
+	    P[ip].z +=  s*P[ip].nk;	
+
+			r0_old = r0;
+			r0 = sqrt( SQR(P[ip].x) + SQR(P[ip].y)+ SQR(P[ip].z));
+
+			s_ = s;
+
+			if (r0 >= RSphere)
 			{
 				EscCond 	=  1;	
 				idc		= -1;	

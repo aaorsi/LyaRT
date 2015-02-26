@@ -22,6 +22,7 @@ void scattering_hydrogen(photon *P, int ip)
 	long i;
 
 	
+  xp = P[ip].xp;
 #ifdef TEST_RII
 	xp = x_test;
 	xabs = fabs(xp);	

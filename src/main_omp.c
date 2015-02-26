@@ -5,6 +5,8 @@ using a Monte Carlo algorithm. */
 // Writing since: 12/09/09 
 // Last Update: (still writing v0)
 
+#include <omp.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -26,7 +28,6 @@ int main(int argc, char *argv[])
 	double sq_mu,sq_mu2,sq_b,sq_a,sq_arg;
 	double dust_fac = ext_zstar/zstar,P_H;
 	long ip,i,j,k;
-	const gsl_rng_type * T;
 	time_t t0,t1,t2,t4,tc1,tc2;
 
 	int NScatRec = 1e4;
@@ -44,11 +45,7 @@ int main(int argc, char *argv[])
 	Kth=Vth/(c*100000.0);
 	
 
-	gsl_rng *r;
-	gsl_rng_env_setup();
-    T = gsl_rng_default;
-    r = gsl_rng_alloc (T);
-	
+		
    if(argc < 3)
     {
         printf(" Input parameter missing. \n ");
@@ -104,7 +101,6 @@ int main(int argc, char *argv[])
 	CellArr = (cell*) malloc(NCells * sizeof(cell));
 	define_geometry(GeomName,CellArr);
 
-	gsl_rng_set(r,Seed0);	//Initializing the random generator with seed Seed0?
 
 	//Finding range of emission probability in cells
 
@@ -245,9 +241,24 @@ int main(int argc, char *argv[])
 	
 	(void) time(&t0);
 
+  #pragma omp parallel private(end_syg,upar,P_H,inter,op_time,nout,vbulk_x,vbulk_y,vbulk_z,EscCond,ni,nj,nk,\
+																	s_nH,s_nd,s_sum,s,s_,H_x,idc,idc_old,t_0,\
+																	flag_zero,i,nscat,xi0,xi1,xi2,xi3,xi4,xi5,xi6,xi7)
+  {
+	const gsl_rng_type * T;
+	gsl_rng *r;
+	gsl_rng_env_setup();
+	T = gsl_rng_default;
+	r = gsl_rng_alloc (T);
+	gsl_rng_set(r,Seed0 + omp_get_thread_num());	//Initializing the random generator with seed Seed0?
+
+  #pragma omp for
   for (ip=0;ip < NPhotons;ip++)
 	{
-        nscat = 0;
+  
+	
+	
+			nscat = 0;
 		
 /*		if( ip > 999 & ip % 1000 == 0)
 	  	{
@@ -546,7 +557,8 @@ escape:
 
 
 	}
-	
+
+  }  // pragma omp parallel
 	printf("Writing data \n");
 
 #ifdef GETPOSDIR

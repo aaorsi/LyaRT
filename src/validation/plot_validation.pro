@@ -1,6 +1,84 @@
 ; This script reads and plots data to be tested 
 ; against analytical formulae or other tests.
 
+
+pro read_lyafile,filename,Photons,DEBUG=debug
+
+	openr,lun,filename,/get_lun
+	Nout = 0ll
+	Np = 0ll
+	readu,lun,Nout
+	readu,lun,Np
+
+	if keyword_set(Debug) then stop
+;	Np = Nout
+	
+	if Keyword_set(Debug) then begin
+		print,'File: '+filename
+		print,'Nout=',Nout
+		print,'Np=',Np
+	endif
+
+	interact = lonarr(Np)
+	readu,lun,interact
+	xarr = fltarr(Np)
+	readu,lun,Xarr
+	nscat = lonarr(np)
+	readu,lun,nscat
+	
+	bscat = lonarr(np)
+	readu,lun,bscat
+
+	x = fltarr(Np)
+	y = fltarr(Np)
+	z = fltarr(Np)
+	
+	phi = fltarr(Np)
+	theta = fltarr(Np)
+
+	_a = 0.0
+
+	for i = 0l,Np-1 do begin
+		readu,lun,_a
+		x[i] = _a
+		readu,lun,_a
+		y[i] = _a
+		readu,lun,_a
+		z[i] = _a
+	endfor
+
+	for i = 0l,Np-1 do begin
+		readu,lun,_a
+		phi[i] = _a
+		readu,lun,_a
+		theta[i] = _a
+	endfor
+
+	if keyword_set(Debug) then begin
+		print,'x y z: '
+		for j = 0,10 do print,x[j],y[j],z[j]
+	endif
+
+	x0 = fltarr(Np)
+	readu,lun,x0
+	close,lun
+	close,/all	
+	Photons = replicate({pos:fltarr(3),interact:0,th:0.0,ph:0.0,x:0.0,nscat:0,bscat:0},Np)
+	Photons.pos[0] = x
+	Photons.pos[1] = y
+	Photons.pos[2] = z
+	Photons.interact = interact
+	Photons.th = theta
+	Photons.ph = phi
+	Photons.x = xarr
+	Photons.nscat = nscat
+	Photons.bscat = bscat
+
+	if keyword_set(Debug) then stop
+	
+	return
+end
+		
 Function J_Neufeld,x,a_tau0
 	
 	J = (sqrt(6/!pi)/24.) * (x^2/a_tau0) * $
@@ -32,21 +110,23 @@ pro plot_validation
 	NMAX			= 1e6
 	PlotPS			= 1
 		
-	Plot_HomSlab	= 1
-	Plot_HomSphere	= 1 
-	Plot_NScat		= 0
-	Plot_fesc		= 0
-	Plot_ExpSphere	= 0
-	Plot_ThinShell  = 0
+	Plot_HomSlab		= 1
+	Plot_HomSphere	= 1
+	Plot_NScat			= 1
+	Plot_fesc				= 1
+	Plot_ExpSphere	= 1
+	Plot_ThinShell  = 1
 
-	RootDir ='/home/aaorsi/LyaRT/' 
+	RootDir ='/home/aaorsi/work/LyaRT/' 
 	PDir = RooTDir + '/data/Params/validation/'
 	ODir = RooTDir + '/out/validation/'
 	PlotDir = 'plots/'
 	
 	wc	= 0l
 
-	if Plot_HomSlab then begin
+	NTotPhotons = replicate({pos:fltarr(3),interact:0,th:0.0,ph:0.0,x:0.0,nscat:0,bscat:0},NMAX)
+
+  if Plot_HomSlab then begin
 		PlotFile	 = 'J_HomSlab'
 		GeomName 	 = 'HomSlab'
 		log_tau0Arr	 = [5.,6.,7.]
@@ -59,7 +139,6 @@ pro plot_validation
 		NPhotons	 = 10000
 		NParFiles	 = 100
 		mean_nh		 = 100.
-
 
 		xr = [-120,120]
 		yr = [0,0.0050]
@@ -82,6 +161,7 @@ pro plot_validation
 		xtitle=textoidl('x = (\nu - \nu_0)/'+del+'\nu_D'),$
 		ytitle = textoidl('J(\tau_0,x)'),$
 		charsiz=2,position=aspect(.8),xthic=4,ythic=4
+
 	
 		for ix = 0,nx-1 do begin
 			xcrit 		 = xcritarr[ix]
@@ -103,42 +183,55 @@ pro plot_validation
 					OutFile = OutputDir + FTag
 				
 					openr,1,OutFile,err=err
-
+					close,1
 					if err ne 0 then begin
 						print,'File '+OutFile+' not found. Skipping it...'
-						close,1
 						continue
 					endif
-					print,OutFile
-					str=''
-					readf,1,str
-
-					while ~EOF(1) do begin
+				
+					if 0 then begin	; Obsolete piece of code follows
+						print,OutFile
+						str=''
 						readf,1,str
-						res = strsplit(str,/ext)
-						nel = n_elements(res)	
+						while ~EOF(1) do begin
+							readf,1,str
+							res = strsplit(str,/ext)
+							nel = n_elements(res)	
+							if res[0] eq '#' then continue
+							if res[nel-1] eq 'Photon_escaped' then begin
+								xarr[nout]  = res[1]		
+								nscat[nout] = res[0]
+								nout++	
+							endif
+							np++
+						endwhile
+						close,1
+					endif
 
-						if res[0] eq '#' then continue
+					read_lyafile,Outfile,Photons
+					np_j = n_elements(Photons.nscat)
 
-						if res[nel-1] eq 'Photon_escaped' then begin
-							xarr[nout]  = res[1]		
-							nscat[nout] = res[0]
-							nout++	
-						endif
-						np++
-					endwhile
-					close,1
+					print,'Nphotons computed =',np
+					NtotPhotons[np:np+np_j-1].pos = Photons.pos
+					NtotPhotons[np:np+np_j-1].th = Photons.th
+					NTotPhotons[np:np+np_j-1].ph = Photons.ph
+					NTotPhotons[np:np+np_j-1].x = Photons.x
+					NTotPhotons[np:np+np_j-1].interact = Photons.interact
+					NTotPhotons[np:np+np_j-1].nscat = Photons.nscat
+
+					np += np_j
+
 				endfor
-
-				print,'Nphotons computed =',np
-
+			
 				if np lt 10 then begin
 					print,'Only ',np,' photons found. Forget it...'
 					continue
 				endif
 
-				xarr = xarr[0:nout-1]
-				nscat = nscat[0:nout-1]
+				es = where(NTotPhotons.interact eq 4)
+
+				xarr = NTotPhotons[es].x ;xarr[0:nout-1]
+				nscat = NTotPhotons[es].nscat ;nscat[0:nout-1]
 
 				if np lt 100 then databin = 5.0
 				if np gt 100 and np lt 1000 then databin = 2.5
@@ -247,42 +340,65 @@ pro plot_validation
 					OutFile = OutputDir + FTag
 				
 					openr,1,OutFile,err=err
-
+					close,1
 					if err ne 0 then begin
 						print,'File '+OutFile+' not found. Skipping it...'
 						close,1
 						continue
 					endif
-					print,OutFile
-					str=''
-					readf,1,str
 
-					while ~EOF(1) do begin
+				
+					read_lyafile,Outfile,Photons
+					np_j = n_elements(Photons.nscat)
+
+					print,'Nphotons computed =',np
+					NtotPhotons[np:np+np_j-1].pos = Photons.pos
+					NtotPhotons[np:np+np_j-1].th = Photons.th
+					NTotPhotons[np:np+np_j-1].ph = Photons.ph
+					NTotPhotons[np:np+np_j-1].x = Photons.x
+					NTotPhotons[np:np+np_j-1].interact = Photons.interact
+					NTotPhotons[np:np+np_j-1].nscat = Photons.nscat
+
+					np += np_j
+					if 0 then begin
+						print,OutFile
+						str=''
 						readf,1,str
-						res = strsplit(str,/ext)
-						nel = n_elements(res)	
 
-						if res[0] eq '#' then continue
+						while ~EOF(1) do begin
+							readf,1,str
+							res = strsplit(str,/ext)
+							nel = n_elements(res)	
+	
+							if res[0] eq '#' then continue
+	
+							if res[nel-1] eq 'Photon_escaped' then begin
+								xarr[nout]  = res[1]		
+								nscat[nout] = res[0]
+								nout++	
+							endif
+							np++
+						endwhile
+						close,1
+					endif
 
-						if res[nel-1] eq 'Photon_escaped' then begin
-							xarr[nout]  = res[1]		
-							nscat[nout] = res[0]
-							nout++	
-						endif
-						np++
-					endwhile
-					close,1
 				endfor
-
+		
 				print,'Nphotons computed =',np
 
 				if np lt 10 then begin
 					print,'Only ',np,' photons found. Forget it...'
 					continue
 				endif
+					
+				es = where(NTotPhotons.interact eq 4)
+				xarr = NTotPhotons[es].x
+				nscat = NTotPhotons[es].nscat ;nscat[0:nout-1]
+				
+;				xarr = xarr[0:nout-1]
+;					nscat = nscat[0:nout-1]
 
-				xarr = xarr[0:nout-1]
-				nscat = nscat[0:nout-1]
+
 
 				if np lt 100 then databin = 5.0
 				if np gt 100 and np lt 1000 then databin = 2.5
@@ -382,31 +498,47 @@ pro plot_validation
 				OutFile = OutputDir + FTag
 			
 				openr,1,OutFile,err=err
-
-				if err ne 0 then begin
-					print,'File '+OutFile+' not found. Skipping it...'
 					close,1
-					continue
-				endif
-				print,OutFile
-				str=''
-				readf,1,str
-
-				while ~EOF(1) do begin
-					readf,1,str
-					res = strsplit(str,/ext)
-					nel = n_elements(res)	
-
-					if res[0] eq '#' then continue
-
-					if res[nel-1] eq 'Photon_escaped' then begin
-						xarr[nout]  = res[1]		
-						nscat[nout] = res[0]
-						nout++	
+					if err ne 0 then begin
+						print,'File '+OutFile+' not found. Skipping it...'
+						continue
 					endif
-					np++
-				endwhile
-				close,1
+
+				
+					read_lyafile,Outfile,Photons
+					np_j = n_elements(Photons.nscat)
+
+					print,'Nphotons computed =',np
+					NtotPhotons[np:np+np_j-1].pos = Photons.pos
+					NtotPhotons[np:np+np_j-1].th = Photons.th
+					NTotPhotons[np:np+np_j-1].ph = Photons.ph
+					NTotPhotons[np:np+np_j-1].x = Photons.x
+					NTotPhotons[np:np+np_j-1].interact = Photons.interact
+					NTotPhotons[np:np+np_j-1].nscat = Photons.nscat
+
+					np += np_j
+					if 0 then begin
+						print,OutFile
+						str=''
+						readf,1,str
+
+						while ~EOF(1) do begin
+							readf,1,str
+							res = strsplit(str,/ext)
+							nel = n_elements(res)	
+	
+							if res[0] eq '#' then continue
+	
+							if res[nel-1] eq 'Photon_escaped' then begin
+								xarr[nout]  = res[1]		
+								nscat[nout] = res[0]
+								nout++	
+							endif
+							np++
+						endwhile
+						close,1
+					endif
+
 			endfor
 
 			print,'Nphotons computed =',np
@@ -415,9 +547,11 @@ pro plot_validation
 				print,'Only ',np,' photons found. Forget it...'
 					continue
 			endif
+			NTotPhotons[np:np+np_j-1].nscat = Photons.nscat
 
-			xarr = xarr[0:nout-1]
-			nscat = nscat[0:nout-1]
+			es = where(NTotPhotons.interact eq 4,nout)
+			xarr = NTotPhotons[es].x
+			nscat = NTotPhotons[es].nscat ;nscat[0:nout-1]
 
 			T4 = Temp*1e-4
 			a = 4.693e-4 * T4^(-1./2)
@@ -508,37 +642,49 @@ pro plot_validation
 			for j = 0,nParFiles-1 do begin
 				FTag = 'xvar_'+strn(xaxis[iz],len=4)+'log_tau'+strn(ltau,len=3)+'.'+strn(j)
 				OutFile = OutputDir + FTag
-				
-				openr,1,OutFile,err=err
-
-				if err ne 0 then begin
-					print,'File '+OutFile+' not found. Skipping it...'
+	
+					openr,1,OutFile,err=err
 					close,1
-					continue
-				endif
-				print,OutFile
-				str=''
-				readf,1,str
-
-				while ~EOF(1) do begin
-					readf,1,str
-					res = strsplit(str,/ext)
-					nel = n_elements(res)	
-
-					if res[0] eq '#' then continue
-
-					if res[nel-1] eq 'Photon_escaped' then begin
-						xarr[nout]  = res[1]		
-						nscat[nout] = res[0]
-						nout++	
+					if err ne 0 then begin
+						print,'File '+OutFile+' not found. Skipping it...'
+						continue
 					endif
-					if res[nel-1] eq 'Absorbed_by_dust' then begin
-						xarr_abs[nabs] = res[1]
-						nabs++
-					endif	
-					np++
-				endwhile
-				close,1
+
+				
+					read_lyafile,Outfile,Photons
+					np_j = n_elements(Photons.nscat)
+
+					print,'Nphotons computed =',np
+					NtotPhotons[np:np+np_j-1].pos = Photons.pos
+					NtotPhotons[np:np+np_j-1].th = Photons.th
+					NTotPhotons[np:np+np_j-1].ph = Photons.ph
+					NTotPhotons[np:np+np_j-1].x = Photons.x
+					NTotPhotons[np:np+np_j-1].interact = Photons.interact
+					NTotPhotons[np:np+np_j-1].nscat = Photons.nscat
+
+					np += np_j
+					if 0 then begin
+						print,OutFile
+						str=''
+						readf,1,str
+
+						while ~EOF(1) do begin
+							readf,1,str
+							res = strsplit(str,/ext)
+							nel = n_elements(res)	
+	
+							if res[0] eq '#' then continue
+	
+							if res[nel-1] eq 'Photon_escaped' then begin
+								xarr[nout]  = res[1]		
+								nscat[nout] = res[0]
+								nout++	
+							endif
+							np++
+						endwhile
+						close,1
+					endif
+			
 			endfor
 
 			print,'Nphotons computed =',np
@@ -548,6 +694,7 @@ pro plot_validation
 				continue
 			endif
 
+			es = where(NTotPhotons.interact eq 4,nout)
 			fesc[iz] = (nout + 0.)/(np + 0.)
 		endfor
 		plotsym,0,thic=5
@@ -625,45 +772,62 @@ pro plot_validation
 			for j = 0,nParFiles-1 do begin
 				FTag = 'vmax_'+strn(vmax,len=4)+'log_tau'+strn(ltau,len=3)+'.'+strn(j)
 				OutFile = OutputDir + FTag
-				
-				openr,1,OutFile,err=err
-
-				if err ne 0 then begin
-					print,'File '+OutFile+' not found. Skipping it...'
+			
+					openr,1,OutFile,err=err
 					close,1
+					if err ne 0 then begin
+						print,'File '+OutFile+' not found. Skipping it...'
+						continue
+					endif
+
+				
+					read_lyafile,Outfile,Photons
+					np_j = n_elements(Photons.nscat)
+
+					print,'Nphotons computed =',np
+					NtotPhotons[np:np+np_j-1].pos = Photons.pos
+					NtotPhotons[np:np+np_j-1].th = Photons.th
+					NTotPhotons[np:np+np_j-1].ph = Photons.ph
+					NTotPhotons[np:np+np_j-1].x = Photons.x
+					NTotPhotons[np:np+np_j-1].interact = Photons.interact
+					NTotPhotons[np:np+np_j-1].nscat = Photons.nscat
+
+					np += np_j
+					if 0 then begin
+						print,OutFile
+						str=''
+						readf,1,str
+
+						while ~EOF(1) do begin
+							readf,1,str
+							res = strsplit(str,/ext)
+							nel = n_elements(res)	
+	
+							if res[0] eq '#' then continue
+	
+							if res[nel-1] eq 'Photon_escaped' then begin
+								xarr[nout]  = res[1]		
+								nscat[nout] = res[0]
+								nout++	
+							endif
+							np++
+						endwhile
+						close,1
+					endif
+
+				endfor
+		
+				print,'Nphotons computed =',np
+
+				if np lt 10 then begin
+					print,'Only ',np,' photons found. Forget it...'
 					continue
 				endif
-				print,OutFile
-				str=''
-				readf,1,str
-
-				while ~EOF(1) do begin
-					readf,1,str
-					res = strsplit(str,/ext)
-					nel = n_elements(res)	
-
-					if res[0] eq '#' then continue
-
-					if res[nel-1] eq 'Photon_escaped' then begin
-						xarr[nout]  = res[1]		
-						nscat[nout] = res[0]
-						nout++	
-					endif
-					np++
-				endwhile
-				close,1
-			endfor
-
-			print,'Nphotons computed =',np
-
-			if np lt 10 then begin
-				print,'Only ',np,' photons found. Forget it...'
-				continue
-			endif
-
-			xarr = xarr[0:nout-1]
-			nscat = nscat[0:nout-1]
-
+					
+				es = where(NTotPhotons.interact eq 4)
+				xarr = NTotPhotons[es].x
+				nscat = NTotPhotons[es].nscat ;nscat[0:nout-1]
+	
 			if np lt 100 then databin = 5.0
 			if np gt 100 and np lt 1000 then databin = 2.5
 			if np gt 1000 and np lt 5e3 then databin = 2.0
@@ -703,20 +867,21 @@ pro plot_validation
 		endfor
 
 		print,'Reading L09 data'
-		datadir = '/home/aaorsi/LyaRT/data/peter/Sphere/'
+		datadir = '/home/aaorsi/work/LyaRT/data/peter/Sphere/'
 		dataFiles = datadir + $
 		['SpDLAT4v0_x.dat','SpDLAT4v20_x.dat','SpDLAT4v200_x.dat','SpDLAT4v2000_x.dat']
 		ndata = n_elements(dataFiles)
 
 		
 		col2 = [!tan,!lblue,!pink,!lgreen,!dpink]
-		bin = 0.5
+		colp = ['ORG2','BLU2','RED2','GRN2','RED5']
+	bin = 0.5
 		for i = 0,ndata-1 do begin
 			rdfloat,datafiles[i],x_l09,/sile
 			np = n_elements(x_l09)
 			plothist,x_l09,xdata,ydata,bin=bin,/noplot
 			ydata = (ydata + 0.)/(np * bin) * (1./(4*!PI))
-			oplot,xdata,ydata,color=!dgray,thic=5
+			oplot,xdata,ydata,color=cgcolor(colp[i]),thic=2
 ;			oplot,xdata,ydata,color=col2[i],thic=3,lines=2
 		endfor
 
@@ -735,7 +900,7 @@ pro plot_validation
 		ltau		 = 6.5
 		Temp		 = 96897.		; [K]
 ;		Temp		 = 10000.		; [K]
-		xcrit		 = 0.0
+		xcrit		 = 3.0
 		vmax		 = 300.
 
 		NParFiles	 = 30
@@ -776,32 +941,40 @@ pro plot_validation
 			FTag = 'vmax_'+strn(vmax,len=4)+'log_tau'+strn(ltau,len=3)+'.'+strn(j)
 			OutFile = OutputDir + FTag
 				
-			openr,1,OutFile,err=err
+				openr,1,OutFile,err=err
+					close,1
+					if err ne 0 then begin
+						print,'File '+OutFile+' not found. Skipping it...'
+						continue
+					endif
 
-			if err ne 0 then begin
-				print,'File '+OutFile+' not found. Skipping it...'
-				close,1
-				continue
-			endif
-			print,OutFile
-			str=''
-			readf,1,str
+				
+					read_lyafile,Outfile,Photons
+					np_j = n_elements(Photons.nscat)
 
-			while ~EOF(1) do begin
-				readf,1,str
-				res = strsplit(str,/ext)
-				nel = n_elements(res)	
+					print,'Nphotons computed =',np
+					NtotPhotons[np:np+np_j-1].pos = Photons.pos
+					NtotPhotons[np:np+np_j-1].th = Photons.th
+					NTotPhotons[np:np+np_j-1].ph = Photons.ph
+					NTotPhotons[np:np+np_j-1].x = Photons.x
+					NTotPhotons[np:np+np_j-1].interact = Photons.interact
+					NTotPhotons[np:np+np_j-1].nscat = Photons.nscat
+					NTotPhotons[np:np+np_j-1].bscat = Photons.bscat
 
-				if res[0] eq '#' then continue
-				if res[nel-1] eq 'Photon_escaped' then begin
-				xarr[nout]  = res[1]		
-				nscat[nout] = res[0]
-				flag_zero[nout] = res[nel-2]
-				nout++	
+					np += np_j
+				
+				endfor
+		
+				print,'Nphotons computed =',np
+
+				if np lt 10 then begin
+					print,'Only ',np,' photons found. Forget it...'
 				endif
-				np++
-			endwhile
-			close,1
+					
+				es = where(NTotPhotons.interact eq 4,nout)
+				xarr = NTotPhotons[es].x
+				nscat = NTotPhotons[es].nscat ;nscat[0:nout-1]
+				flag_zero = NTotphotons[es].bscat
 
 ;			xarr = xarr[0:nout-1]
 ;			nscat = nscat[0:nout-1]
@@ -814,7 +987,6 @@ pro plot_validation
 			if np ge 5e4 then databin = .5
 	
 
-		endfor
 			databin = 1.0
 	
 
@@ -822,7 +994,7 @@ pro plot_validation
 			xtitle=textoidl('x = (\nu - \nu_0)/'+del+'\nu_D'),$
 			ytitle = textoidl('J(\tau_0,x)'),$
 			charsiz=2,position=aspect(.6)
-			plothist,xarr[0:nout-1],xdata,ydata,bin=databin,/noplot
+			plothist,xarr,xdata,ydata,bin=databin,/noplot
 			ydata = ((ydata+0.)/(np+0.)/databin)
 	
 			oplot,xdata,ydata,thic=4,color=col[0],ps=10
@@ -867,7 +1039,7 @@ pro plot_validation
 		
 	
 		print,'Nphotons computed =',np
-
+		stop
 
 		if PlotPs then device,/close
 	endif

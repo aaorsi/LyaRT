@@ -162,7 +162,7 @@ void define_geometry(char *GeomName, cell *CellArr)
 		case 1:
 			
 		H = vmax / RSphere;
-		dr = RSphere / (NCells-1);
+		dr = (NCells > 1) ? RSphere / (NCells-1) : 0.0;
 
 		for (i = 0; i<NCells; i++)
 		{

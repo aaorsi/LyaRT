@@ -6,14 +6,16 @@
 pro make_validation_pars
 
 ;	RootDir = '/home/jmejia/LyaRT/'
-	RootDir ='/home/aaorsi/work/LyaRT/' 
+	RootDir ='/home/CEFCA/aaorsi/work/LyaRT-master/' 
 	PDir = RooTDir + '/data/Params/validation/'
 ;	ODir = RooTDir + '/out/validation/'
-	ODir = '/home/aaorsi/work/LyaRT/out/validation/'
+	ODir = '/home/CEFCA/aaorsi/LyaRT-master/out/validation/'
+	Rdir2 = '/home/aaorsi/work/LyaRT/'
+	Pdir2 = RDir2 + '/data/Params/validation/'
 
-	Test_HomSlab	= 1				; Homogeneous Slab
+	Test_HomSlab		= 1			; Homogeneous Slab
 	Test_HomSphere	= 1				; Homogeneous Sphere
-	Test_NScat		= 1				; Number of scatterings from an homogeneous slab
+	Test_NScat			= 1			; Number of scatterings from an homogeneous slab
 	Test_fesc_slab	= 1				; f_esc from a dusty homogeneous slab
 	Test_ExpSphere	= 1				; Expanding sphere
 	Test_ThinShell  = 1				; An homogeneous thin shell
@@ -33,11 +35,11 @@ pro make_validation_pars
 			ntau		 = n_elements(log_Tau0Arr)		
 			Name		 = GeomName + '_T'+strn(Temp,len=5)+'_xcrit'+strn(xcrit,len=3)
 		
-			NPhotons	 = 10000
-			NParFiles	 = 100
+			NPhotons	 = 100
+			NParFiles	 = 10
 			mean_nh		 = 100.
-			spawn,'mkdir -p '+PDir + Name
-			ParList		 = PDir + Name+'/file_list'
+			spawn,'mkdir -p '+PDir2 + Name
+			ParList		 = PDir2 + Name+'/file_list'
 			openw,2,ParList
 		
 			for i = 0,ntau-1 do begin			
@@ -49,7 +51,7 @@ pro make_validation_pars
 					print,FTag
 					make_parfile,GeomName=GeomName,Temp = Temp,Mean_Nh = mean_nh,$
 					V = 0.,NPhotons = NPhotons,Tau0 = t0, xcrit = xcrit, NCells = 1,$
-					FTag = FTag,ParDir = PDIr + Name+'/',OutDir=ODir + Name+'/',$
+					FTag = FTag,ParDir = Pdir2 + Name+'/',OutDir=ODir + Name+'/',$
 					IncDust = 0
 					
 					printf,2,FTag+'.par'
@@ -73,12 +75,12 @@ pro make_validation_pars
 		ntau		 = n_elements(log_Tau0Arr)		
 		Name		 = GeomName + '_T'+strn(Temp,len=5)+'_xcrit'+strn(xcrit,len=3)
 		
-		NPhotons	 = 10000
-		NParFiles	 = 100
+		NPhotons	 = 100
+		NParFiles	 = 10
 		mean_nh		 = 100.
 
-		spawn,'mkdir -p '+PDir + Name
-		ParList		 = PDir + Name+'/file_list'
+		spawn,'mkdir -p '+PDir2 + Name
+		ParList		 = PDir2 + Name+'/file_list'
 		openw,2,ParList
 		
 		for i = 0,ntau-1 do begin			
@@ -90,7 +92,7 @@ pro make_validation_pars
 				print,FTag
 				make_parfile,GeomName=GeomName,Temp = Temp,Mean_Nh = mean_nh,$
 				V = 0.,NPhotons = NPhotons,Tau0 = t0, xcrit = xcrit, NCells = 1,$
-				FTag = FTag,ParDir = PDIr + Name+'/',OutDir=ODir + Name+'/',$
+				FTag = FTag,ParDir = Pdir2 + Name+'/',OutDir=ODir + Name+'/',$
 				IncDust = 0
 				
 				printf,2,FTag+'.par'
@@ -115,11 +117,11 @@ pro make_validation_pars
 		ntau		 = n_elements(log_Tau0Arr)		
 		Name		 = 'NScat'+GeomName + '_T'+strn(Temp,len=5)+'_xcrit'+strn(xcrit,len=3)
 		
-		NPhotons	 = 50
+		NPhotons	 = 10
 		NParFiles	 = [40,40,40,40,50,100]
 		mean_nh		 = 100.
-		spawn,'mkdir -p '+PDir + Name
-		ParList		 = PDir + Name+'/file_list'
+		spawn,'mkdir -p '+Pdir2 + Name
+		ParList		 = Pdir2 + Name+'/file_list'
 		openw,2,ParList
 		
 		for i = 0,ntau-1 do begin			
@@ -131,7 +133,7 @@ pro make_validation_pars
 				print,FTag
 				make_parfile,GeomName=GeomName,Temp = Temp,Mean_Nh = mean_nh,$
 				V = 0.,NPhotons = NPhotons,Tau0 = t0, xcrit = xcrit, NCells = 1,$
-				FTag = FTag,ParDir = PDIr + Name+'/',OutDir=ODir + Name+'/',$
+				FTag = FTag,ParDir = Pdir2 + Name+'/',OutDir=ODir + Name+'/',$
 				IncDust = 0
 				
 				printf,2,FTag+'.par'
@@ -169,11 +171,11 @@ pro make_validation_pars
 		
 		Name		 = 'fesc_'+GeomName + '_T'+strn(Temp,len=5)+'_xcrit'+strn(xcrit,len=3)
 		
-		NPhotons	 = 1000
-		NParFiles	 = 10
+		NPhotons	 = 100
+		NParFiles	 = 50
 		mean_nh		 = 100.
-		spawn,'mkdir -p '+PDir + Name
-		ParList		 = PDir + Name+'/file_list'
+		spawn,'mkdir -p '+Pdir2 + Name
+		ParList		 = Pdir2 + Name+'/file_list'
 		openw,2,ParList
 		
 		for i = 0,ntau-1 do begin			
@@ -188,7 +190,7 @@ pro make_validation_pars
 					print,FTag
 					make_parfile,GeomName=GeomName,Temp = Temp,Mean_Nh = mean_nh,$
 					V = 0.,NPhotons = NPhotons,Tau0 = t0, xcrit = xcrit, NCells = 1,$
-					FTag = FTag,ParDir = PDIr + Name+'/',OutDir=ODir + Name+'/',$
+					FTag = FTag,ParDir = Pdir2 + Name+'/',OutDir=ODir + Name+'/',$
 					Z = Z, IncDust = 'Yes'
 					printf,2,FTag+'.par'
 				endfor
@@ -212,14 +214,13 @@ pro make_validation_pars
 		nv			 = n_elements(vmaxarr)	
 		Name		 = 'Expanding_'+GeomName + '_T'+strn(Temp,len=5)+'_xcrit'+strn(xcrit,len=3)
 		
-		NPhotons	 = 2000
-		NParFiles	 = 50 
+		NPhotons	 = 100
+		NParFiles	 = 30 
 		mean_nh		 = 100.
-
 		NCells		 = 1000
 
-		spawn,'mkdir -p '+PDir + Name
-		ParList		 = PDir + Name+'/file_list'
+		spawn,'mkdir -p '+Pdir2 + Name
+		ParList		 = Pdir2 + Name+'/file_list'
 		openw,2,ParList
 		ltau = log_Tau0Arr
 		t0 = 10^ltau
@@ -231,7 +232,7 @@ pro make_validation_pars
 				print,FTag
 				make_parfile,GeomName=GeomName,Temp = Temp,Mean_Nh = mean_nh,$
 				V = vmax,NPhotons = NPhotons,Tau0 = t0, xcrit = xcrit, NCells = NCells,$
-				FTag = FTag,ParDir = PDIr + Name+'/',OutDir=ODir + Name+'/',$
+				FTag = FTag,ParDir = Pdir2 + Name+'/',OutDir=ODir + Name+'/',$
 				IncDust = 0
 				
 				printf,2,FTag+'.par'
@@ -249,7 +250,7 @@ pro make_validation_pars
 		b			 = 40.0		; kms-1
 		column_d	 = 2.0e20
 		tau0		 = 3.8e6
-		xcrit		 = 0.
+		xcrit		 = 3.
 		vmax		 = 300.
 		RMax		 = 1.17e19
 		f			 = 0.9			; RMin/RMax
@@ -270,13 +271,13 @@ pro make_validation_pars
 
 		mean_nh		= (1./(RMax*(1 - f))) * column_d
 
-		NPhotons	 = 2000
-		NParFiles	 = 30
+		NPhotons	 = 500
+		NParFiles	 = 20
 
 		NCells		 = 1000
 	
-		spawn,'mkdir -p '+PDir + Name
-		ParList		 = PDir + Name+'/file_list'
+		spawn,'mkdir -p '+Pdir2 + Name
+		ParList		 = Pdir2 + Name+'/file_list'
 		openw,2,ParList
 		print,ParList
 		ltau = alog10(tau0)
@@ -286,7 +287,7 @@ pro make_validation_pars
 				print,FTag
 				make_parfile,GeomName=GeomName,Temp = Temp,Mean_Nh = mean_nh,$
 				V = vmax,NPhotons = NPhotons,Tau0 = t0, xcrit = xcrit, NCells = NCells,$
-				FTag = FTag,ParDir = PDIr + Name+'/',OutDir=ODir + Name+'/',$
+				FTag = FTag,ParDir = Pdir2 + Name+'/',OutDir=ODir + Name+'/',$
 				IncDust = 0,Rout = RMax,Rinn = RMin,b = b
 				
 				printf,2,FTag+'.par'
