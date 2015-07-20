@@ -123,7 +123,7 @@ double Temp,mean_nH,mean_z,xcritval,mean_nH_static,ColDens;
 	double Ix0,Iy0,Iz0,Ith0,Iph0;
 	double Vrot, x_mean;
         float *XArr,*X0Arr,*PosArr,*AngleArr,*PosArrLong;
-	int *InterArr, *NscatArr;
+	int *InterArr, *NscatArr, *BscatArr ;
 	double alpha_vprof, sigma_vprof,app_angle;
 long idc_old,idc,nbins,nout;
 double rx0,ry0,rz0,rxf,ryf,rzf,radius,cx,cy,cz,acrit,aarg;
