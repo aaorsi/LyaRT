@@ -271,8 +271,9 @@ void define_geometry(char *GeomName, cell *CellArr)
 //	Shell with constant velocity, constant density.	
 
 		case 4:
+#ifndef SILENT
 		printf("Defining Configuration 4:%s\n",GeomName);
-	
+#endif	
 		id = 0;
 		CellArr[id].id = 0;			
 		CellArr[id].neig[0]  = 0;
@@ -693,7 +694,9 @@ void define_geometry(char *GeomName, cell *CellArr)
 		CellArr[id].vbulk[0] = 0;
 	
 		dr = (RSphere-R_inner) / (NCells-2);
+#ifndef SILENT
 		printf("dr for Biconical wind:%e\n",dr);
+#endif
 //		H = 0.;
 //		H = vmax / RSphere;
 

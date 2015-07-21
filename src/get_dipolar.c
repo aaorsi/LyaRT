@@ -22,7 +22,9 @@ void get_dipolar(double *dipolar_list)
 	strcat(dipfile,"dipolar/dipolar");
 	if (fd = fopen(dipfile,"r"))
 	{
+#ifndef SILENT
 		dprints(dipfile);
+#endif		
 		fgets(buf,20,fd);
 		i = 0;
 		while (!feof(fd))

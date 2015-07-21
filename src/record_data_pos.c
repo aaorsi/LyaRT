@@ -25,9 +25,11 @@ void record_data_pos(long Np)
 	long i;
 //	sprintf(sp,"%ld",ip);
 	strcpy(OutFile,OutShort);
-	
+
+#ifndef SILENT
 	printf("Output file : %s\n",OutFile);
 	fflush(stdout);
+#endif
 
 	Np = (Np < NPhotons) ? Np : NPhotons;
 
@@ -37,7 +39,9 @@ void record_data_pos(long Np)
 		fwrite(&NPhotons,sizeof(long),1,fout);
 		fwrite(&Np,sizeof(long),1,fout);
 
+#ifndef SILENT
 		printf("Np = %ld\n",Np);
+#endif
 /*		for (i = 0; i<NPhotons; i++)
 		{
 			fwrite(&XArr[i],sizeof(float),NPhotons,fout);
@@ -64,6 +68,10 @@ void record_data_pos(long Np)
 */
 
 		fclose(fout);
+#ifdef SILENT
+printf(".\n");
+#endif
+
 	}
 	else
 	{

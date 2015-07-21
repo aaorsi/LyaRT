@@ -103,7 +103,9 @@ void init_photon(photon *P, int ip, double xi0, double xi1, double xi2)
 		xp0=xp; 
 		dprintl(ip);
 		dprintd(xp);
+#ifndef SILENT
 		printf("------");
+#endif
 		//#else
 		//xp = 0; // initial frequency in the rest frame of the fluid
 		//xp0=xp; 

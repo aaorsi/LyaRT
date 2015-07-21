@@ -63,12 +63,16 @@ int main(int argc, char *argv[])
 	strcpy(ParFile,argv[1]);
 	Seed0 = atoi(argv[2]);
 	default_parameters();
+#ifndef SILENT
 	dprints(OutShort);
 	dprints(OutLong);
-	
+#endif
+
 	read_parameters(ParFile);
+#ifndef SILENT
 	dprints(OutShort);
 	dprints(OutLong);
+#endif
 
 //	The following are definitions specific to particular geometries. 
 
@@ -133,7 +137,9 @@ int main(int argc, char *argv[])
 
 	strcat(HFile,Tstr);
 
+#ifndef SILENT
 	printf(" Storing tabulated data... \n");
+#endif
 
 	HList = (double*) malloc(NTAB2*sizeof(double)*2);
 	DipList = (double*) malloc(NTAB1*2*sizeof(double));
@@ -141,23 +147,34 @@ int main(int argc, char *argv[])
 
 #ifndef HAPPROX	
 	get_H(HFile,HList);
+#ifndef SILENT	
 	printf("GET_H read\n");
 #endif
 
+#endif
+
 	get_dipolar(DipList);	
+#ifndef SILENT
 	printf("GET_DIPOLAR read\n");
+#endif	
 	get_HG(HGList);	
+#ifndef SILENT
 	printf("GET_HG read\n");
+#endif
 
 	// Print parameters read
+#ifndef SILENT
 	print_parameters(CellArr);
+#endif
 
 #ifdef TEST_RII
 	printf("TESTING REDISTRIBUTION FUNCTION for x0 = %f\n",x_test);
 #endif
 
 	//Loop over NPhotons
+#ifndef SILENT
 	printf(" Loop over %ld photons started...\n",NPhotons);
+#endif
 
 	cx = 0.;
 	cy = 0.;
@@ -167,9 +184,9 @@ int main(int argc, char *argv[])
 	
 	gtype = (strcmp(GeomName,"HomSlab")==0) ? 0 : 1;
 	if (strcmp(GeomName,"HomSphere")==0 && NCells == 1) gtype = 2;
-
+#ifndef SILENT
 	dprinti(gtype);	
-	
+#endif	
 	fflush(stdout);
 	nout = 0;
 	
@@ -508,9 +525,13 @@ escape:
 				printf("Max number of absorbed photons or limit on the number of photons reached,  exiting...\n");
 
 #ifdef GETPOSDIR
+#ifndef SILENT
 				printf("Writing data\n");
+#endif
 				record_data_pos(ip);
+#ifndef SILENT
 				printf("File %s written\n",OutShort);
+#endif
 				free(PosArr);
 				free(AngleArr);
 #else
@@ -532,7 +553,9 @@ escape:
 			printf("MAXTIME reached, forcing output and exit\n");
 #ifdef GETPOSDIR
 			record_data_pos(ip);
+#ifndef SILENT
 			printf("File %s written\n",OutShort);
+#endif
 			free(PosArr);
 			free(AngleArr);
 #else
@@ -541,17 +564,21 @@ escape:
 			exit(0);
 		}
 #endif
-
+#ifndef SILENT
 	printf("%ld %f %d\n",ip,P[ip].xp,P[ip].nscat);
-
+#endif
 
 	}
-	
+#ifndef SILENT
 	printf("Writing data \n");
+#endif
 
 #ifdef GETPOSDIR
 	record_data_pos(ip);
+#ifndef SILENT
 	printf("File %s written\n",OutShort);
+#endif
+
 	free(PosArr);
 	free(AngleArr);
 #else
