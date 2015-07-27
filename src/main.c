@@ -311,6 +311,27 @@ int main(int argc, char *argv[])
 
 			while(t_0 > 0.)
 			{  	
+#ifdef TIMELIMIT
+		(void) time(&t4);
+		t4 = (float) (t4-t0)/60.;
+		if (t4 > MAXTIME)
+		{
+			printf("MAXTIME reached, forcing output and exit\n");
+			fflush(stdout);
+#ifdef GETPOSDIR
+			record_data_pos(ip);
+#ifndef SILENT
+			printf("File %s written\n",OutShort);
+#endif
+			free(PosArr);
+			free(AngleArr);
+#else
+			record_data_short();
+#endif
+			exit(0);
+		}
+#endif
+						
 
 				// Shortcut to compute crossing of empty cells, where no optical depth (t_0) is *used*.
 				empty_cells(P,ip);			
@@ -503,6 +524,27 @@ escape:
 				}
 			}
 			nscat++;
+
+#ifdef TIMELIMIT
+		(void) time(&t4);
+		t4 = (float) (t4-t0)/60.;
+		if (t4 > MAXTIME)
+		{
+			printf("MAXTIME reached, forcing output and exit\n");
+			fflush(stdout);
+#ifdef GETPOSDIR
+			record_data_pos(ip);
+#ifndef SILENT
+			printf("File %s written\n",OutShort);
+#endif
+			free(PosArr);
+			free(AngleArr);
+#else
+			record_data_short();
+#endif
+			exit(0);
+		}
+#endif
 		}				
 		
 
@@ -545,25 +587,6 @@ escape:
 			}
 		}		
 
-#ifdef TIMELIMIT
-		(void) time(&t4);
-		t4 = (float) (t4-t0)/60.;
-		if (t4 > MAXTIME)
-		{
-			printf("MAXTIME reached, forcing output and exit\n");
-#ifdef GETPOSDIR
-			record_data_pos(ip);
-#ifndef SILENT
-			printf("File %s written\n",OutShort);
-#endif
-			free(PosArr);
-			free(AngleArr);
-#else
-			record_data_short();
-#endif
-			exit(0);
-		}
-#endif
 #ifndef SILENT
 	printf("%ld %f %d\n",ip,P[ip].xp,P[ip].nscat);
 #endif

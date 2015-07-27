@@ -97,8 +97,6 @@ void init_photon(photon *P, int ip, double xi0, double xi1, double xi2)
 #endif		
 		
 #ifdef XINDIST
-		
-		
 		xp	= x_mean + Vrot * sqrt(-2*log(xi3))*cos(2*Pi*xi4);
 		xp0=xp; 
 		dprintl(ip);
