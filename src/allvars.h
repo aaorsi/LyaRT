@@ -24,7 +24,7 @@
 #define KnH		 1e35
 #define MAXX	 20			// This is the maximum value of x in te lookup table to get H(x)
 #define NLINES	 10		
-#define MAXTIME  1440		// Minutes
+#define MAXTIME  0.5		// Minutes
 
 // Physical constants
 #define zstar 0.02				// Solar Metallicity
