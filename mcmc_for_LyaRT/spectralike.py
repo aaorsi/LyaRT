@@ -26,26 +26,104 @@ if use_ptsampler:
 	from emcee import PTSampler
 	print 'running emcee PTSampler'
 
-nspec=2
-#ndim, nwalkers,niter = 2, 30, 48
-ndim, nwalkers,niter = 2, 60, 500
-#params=[logNH,Vmax]
-source='harold'  
-in_spectrum_dir="./useful_spectra/"
-user_path="/home/CEFCA/aaorsi/"
-LyaRT_path="/home/CEFCA/aaorsi/LyaRT/src/"
 
+#### Define Geometry ####
+
+Geom='ThinShell'
+#Geom='Wind'
+#Geom='BWind'
+
+#### Define Geometry ####
+
+
+nspec=2
+
+#### Deninig input and output paths, MUST be redifined by each user ####
+
+source='harold'                             # currently choose between  'harold and 'mike_LAE' 
+in_spectrum_dir="./useful_spectra/"         #input spectra are are inside this folder and their names have the structure: source + '_'  + nspec + '.data'
+user_path="/home/CEFCA/aaorsi/"             #user main path
+LyaRT_path="/home/CEFCA/aaorsi/LyaRT/src/"  #LyaRT source code
+
+#### Deninig input and output paths, MUST be redifined by each user ####
+
+
+
+####### pick which parameters will be minimized by mcmc, be aware of  uncommenting  one of the posibilities  below #######
+
+#parameters=['NH','Vmax','Z','theta']
+#parameters=['NH','Vmax','theta']
+#parameters=['NH','Vmax']               # By default
+parameters=['NH','Vmax','Z']
+
+####### pick which parameters will be minimized by mcmc, be aware of  uncommenting  one of the posibilities  above #######
+
+
+#### Define ndim accordingly ####
+
+if parameters==['NH','Vmax']:
+	ndim=2
+elif parameters==['NH','Vmax','Z']:
+	ndim=3
+elif parameters==['NH','Vmax','Z','theta']:
+	ndim=4
+elif parameters==['NH','Vmax','theta']:
+	ndim=3
+else:
+	ndim=2
+
+#### Define ndim accordingly ####
+
+
+
+
+### Choose number of walkers and iterations to be performed by emceee ####
+
+nwalkers,niter = 6, 200
+
+### Choose number of walkers and iterations to be performed by emceee ####
+
+
+
+#### CRUCIAL, DEFINE SEEDS FOR INPUT PARAMETERS!!!!!!! #####
 
 logNH=18.5 #log(cm-2)
 DlogNH=0.5 #Delta ini, for seeds
+
 Vmax=600.0 #km/s
 DVmax=300.0 #Delta ini, for seeds
+
+logZ=-2.0 # log(Z/Zsun)
+DlogZ=0.3
+
+theta=0
+Dtheta=np.pi/4
+
+
 gauss_width=90.0 #km/s
-logZ=-5.0 # log(Z/Zsun)
+
 scaling=np.arange(0.7,1.31,0.05) # after re-calibrating to line peak flux. 
 shift=np.arange(-7.0,7.0,0.2) # \AA
-Geom='ThinShell'
-#Geom='Wind'
+
+
+
+NH=logNH+DlogNH*randn(nwalkers)
+NH=np.abs(NH)
+V=Vmax+DVmax*randn(nwalkers)
+V=np.abs(V)
+Z=logZ+DlogZ*randn(nwalkers)
+TH=theta+Dtheta*randn(nwalkers)
+
+#### CRUCIAL, DEFINE SEEDS FOR INPUT PARAMETERS!!!!!!! #####
+
+#GW=gauss_width+20.0*randn(nwalkers)
+#GW=np.abs(GW)
+#F=scaling + 0.15*randn(nwalkers)
+#F=np.abs(F)
+#S=shift + 1.0*randn(nwalkers)
+#S=np.abs(S)
+
+
 
 
 
@@ -322,6 +400,22 @@ def lnlike(params,Geom,wl_obs,f_obs,f_err,gauss_width,logZ,scaling,shift):
 	logNH,Vmax=params
 	return spectralike(logNH,Vmax,gauss_width,logZ,scaling,shift,Geom,wl_obs,f_obs,f_err)
 
+def lnlikeZ(params,Geom,wl_obs,f_obs,f_err,gauss_width,scaling,shift):
+	logNH,Vmax,logZ=params
+	return spectralike(logNH,Vmax,gauss_width,logZ,scaling,shift,Geom,wl_obs,f_obs,f_err)
+
+
+
+###### NEED TO BE REDEFINED TO ACCOUNT FOR THE ANGLE ######
+def lnlikeZTH(params,Geom,wl_obs,f_obs,f_err,gauss_width,logZ,scaling,shift):
+	logNH,Vmax,logZ=params
+	return spectralike(logNH,Vmax,gauss_width,logZ,scaling,shift,Geom,wl_obs,f_obs,f_err)
+
+def lnlikeTH(params,Geom,wl_obs,f_obs,f_err,gauss_width,logZ,scaling,shift):
+	logNH,Vmax=params
+	return spectralike(logNH,Vmax,gauss_width,logZ,scaling,shift,Geom,wl_obs,f_obs,f_err)
+###### NEED TO BE REDEFINED TO ACCOUNT FOR THE ANGLE ######
+
 
 
 
@@ -339,18 +433,6 @@ f_obs=f_obs/np.sum(f_obs)
 
 
 
-NH=logNH+DlogNH*randn(nwalkers)
-NH=np.abs(NH)
-V=Vmax+DVmax*randn(nwalkers)
-V=np.abs(V)
-#GW=gauss_width+20.0*randn(nwalkers)
-#GW=np.abs(GW)
-#Z=logZ+0.3*randn(nwalkers)
-#F=scaling + 0.15*randn(nwalkers)
-#F=np.abs(F)
-#S=shift + 1.0*randn(nwalkers)
-#S=np.abs(S)
-pos = [[NH[i],V[i]] for i in range(nwalkers)]
 
 pool = MPIPool(loadbalance = True)
 
@@ -367,9 +449,43 @@ if use_ptsampler:
 		return 0.0
 
 	ntemps = 20
-	sampler = PTSampler(ntemps,nwalkers,ndim,lnlike,logp,loglargs=(Geom,wl_obs,f_obs,f_err,gauss_width,logZ,scaling,shift),pool=pool)
+	
+	#SAMPLER AND SEEDS ARE DEFINED ACCORDING TO THE MCMC PARAMETERS CHOSEN
+	if parameters==['NH','Vmax']:
+		pos = [[NH[i],V[i]] for i in range(nwalkers)]
+		sampler = PTSampler(ntemps,nwalkers,ndim,lnlike,logp,loglargs=(Geom,wl_obs,f_obs,f_err,gauss_width,logZ,scaling,shift),pool=pool)
+	elif parameters==['NH','Vmax','Z']:
+		pos = [[NH[i],V[i],Z[i]] for i in range(nwalkers)]
+		sampler = PTSampler(ntemps,nwalkers,ndim,lnlikeZ,logp,loglargs=(Geom,wl_obs,f_obs,f_err,gauss_width,scaling,shift),pool=pool)
+	elif parameters==['NH','Vmax','Z','theta']:
+		pos = [[NH[i],V[i],Z[i],TH[i]] for i in range(nwalkers)]
+		sampler = PTSampler(ntemps,nwalkers,ndim,lnlikeZTH,logp,loglargs=(Geom,wl_obs,f_obs,f_err,gauss_width,scaling,shift),pool=pool)
+	elif parameters==['NH','Vmax','theta']:
+		pos = [[NH[i],V[i],TH[i]] for i in range(nwalkers)]
+		sampler = PTSampler(ntemps,nwalkers,ndim,lnlikeTH,logp,loglargs=(Geom,wl_obs,f_obs,f_err,gauss_width,logZ,scaling,shift),pool=pool)
+	else:
+		pos = [[NH[i],V[i],Z[i]] for i in range(nwalkers)]
+		sampler = PTSampler(ntemps,nwalkers,ndim,lnlikeZ,logp,loglargs=(Geom,wl_obs,f_obs,f_err,gauss_width,scaling,shift),pool=pool)
+
+	
 else:
-	sampler = emcee.EnsembleSampler(nwalkers, ndim, lnlike, args=(Geom,wl_obs,f_obs,f_err,gauss_width,logZ,scaling,shift),pool=pool)
+	#SAMPLER AND SEEDS ARE DEFINED ACCORDING TO THE MCMC PARAMETERS CHOSEN
+	if parameters==['NH','Vmax']:
+		pos = [[NH[i],V[i]] for i in range(nwalkers)]
+		sampler = emcee.EnsembleSampler(nwalkers, ndim, lnlike, args=(Geom,wl_obs,f_obs,f_err,gauss_width,logZ,scaling,shift),pool=pool)
+	elif parameters==['NH','Vmax','Z']:
+		pos = [[NH[i],V[i],Z[i]] for i in range(nwalkers)]
+		sampler = emcee.EnsembleSampler(nwalkers, ndim, lnlikeZ, args=(Geom,wl_obs,f_obs,f_err,gauss_width,scaling,shift),pool=pool)
+	elif parameters==['NH','Vmax','Z','theta']:
+		pos = [[NH[i],V[i],Z[i],TH[i]] for i in range(nwalkers)]
+		sampler = emcee.EnsembleSampler(nwalkers, ndim, lnlikeZTH, args=(Geom,wl_obs,f_obs,f_err,gauss_width,scaling,shift),pool=pool)
+	elif parameters==['NH','Vmax','theta']:
+		pos = [[NH[i],V[i],TH[i]] for i in range(nwalkers)]
+		sampler = emcee.EnsembleSampler(nwalkers, ndim, lnlikeTH, args=(Geom,wl_obs,f_obs,f_err,gauss_width,scaling,shift),pool=pool)
+	else:
+		pos = [[NH[i],V[i]] for i in range(nwalkers)]
+		sampler = emcee.EnsembleSampler(nwalkers, ndim, lnlikeZ, args=(Geom,wl_obs,f_obs,f_err,gauss_width,scaling,shift),pool=pool)
+
 
 
 print 'starting burn-in iterations'
@@ -411,8 +527,20 @@ pool.close()
 
 print("Mean acceptance fraction: {0:.3f}".format(np.mean(sampler.acceptance_fraction)))
 
+
+#Plotting triangle plot that shows the model density  over each posible tuples of parameter projections
 samples = sampler.chain.reshape((-1, ndim))
-fig = triangle.corner(samples, labels=[r"$\log(N_H)$", r"$V_{\rm exp}$"])
+if parameters==['NH','Vmax']:
+	fig = triangle.corner(samples, labels=[r"$\log(N_H)$", r"$V_{\rm exp}$"])
+elif parameters==['NH','Vmax','Z']:
+	fig = triangle.corner(samples, labels=[r"$\log(N_H)$", r"$V_{\rm exp}$",r"$\log(Z/Z_{\odot})$"])
+elif parameters==['NH','Vmax','Z','theta']:
+	fig = triangle.corner(samples, labels=[r"$\log(N_H)$", r"$V_{\rm exp}$",r"$\log(Z/Z_{\odot})$",r"$\theta$"])
+elif parameters==['NH','Vmax','theta']:
+	fig = triangle.corner(samples, labels=[r"$\log(N_H)$", r"$V_{\rm exp}$",r"$\theta$"])
+else:
+	fig = triangle.corner(samples, labels=[r"$\log(N_H)$", r"$V_{\rm exp}$"])
+	
 fig.savefig("triangle.png")
 
 
