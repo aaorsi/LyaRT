@@ -391,15 +391,15 @@ def spectralike(logNH,Vmax,gauss_width,logZ,scaling,shift,Geom,wl_obs,f_obs,f_er
 			chi2a=1.0*np.sum(np.divide(np.power(num_chi,2),den_chi))/(deg_free-3)
 			chi2=np.min([chi2,chi2a])
 			if np.isnan(chi2): chi2=np.inf
+	fn = "spec_output_"+str(specnumber)+".out"
+	f = open(fn, "a")
+	escape_fraction=len(wavel)/(1.0*len(wavelt))
+	f.write(" ".join([str(logNH),"\t"+str(Vmax),"\t"+str(logZ),"\t"+str(escape_fraction),"\t"+str(chi2)]))
+	f.write("\n")
+	f.close()
+
     print 'chi2 = ',chi2
     
-    fn = "spec_output_"+str(specnumber)+".out"
-    f = open(fn, "a")
-    escape_fraction=len(wavel)/(1.0*len(wavelt))
-
-    f.write(" ".join([str(logNH),"\t"+str(Vmax),"\t"+str(logZ),"\t"+str(escape_fraction),"\t"+str(chi2)]))
-    f.write("\n")
-    f.close()
 
 
     sys.stdout.flush()
