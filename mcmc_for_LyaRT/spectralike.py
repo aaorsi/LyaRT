@@ -31,7 +31,7 @@ if use_ptsampler:
 
 Geom='ThinShell'
 #Geom='Wind'
-#Geom='BWind'
+#Geom='Biconical_Wind'
 
 #### Define Geometry ####
 
@@ -306,8 +306,8 @@ def gen_par_file_LyaRT(logNH,Vmax,gauss_width,logZ,Geom,dlambda=11.0,user=user_p
     return 0
     
 
-def spectralike(logNH,Vmax,gauss_width,logZ,scaling,shift,Geom,wl_obs,f_obs,f_err,wl_min=1195.0,wl_max=1237.0,wl_0=1215.668,user="/home/CEFCA/aaorsi/",in_dir="LyaRT/data/Params/grid/",out_dir="mcmcrun/"):
-    if Vmax>1000.0 or logNH>24.0 or Vmax<10.0 or logNH < 14:
+def spectralike(logNH,Vmax,gauss_width,logZ,scaling,shift,Geom,wl_obs,f_obs,f_err,specnumber,wl_min=1195.0,wl_max=1237.0,wl_0=1215.668,user="/home/CEFCA/aaorsi/",in_dir="LyaRT/data/Params/grid/",out_dir="mcmcrun/"):
+    if Vmax>1500.0 or logNH>21.5 or Vmax<10.0 or logNH < 16 or logZ<-5.0:
         chi2=np.inf
     else:
         out_dir=user+out_dir
@@ -350,7 +350,7 @@ def spectralike(logNH,Vmax,gauss_width,logZ,scaling,shift,Geom,wl_obs,f_obs,f_er
 					sys.stdout.flush()
 					chi2=1000000000
 					return -1*chi2
-
+	
         wl_max=np.amax(wavel)
         wl_min=np.amin(wavel)
         nbins=np.int( (wl_max - wl_min) / d_wl )
@@ -392,28 +392,38 @@ def spectralike(logNH,Vmax,gauss_width,logZ,scaling,shift,Geom,wl_obs,f_obs,f_er
 			chi2=np.min([chi2,chi2a])
 			if np.isnan(chi2): chi2=np.inf
     print 'chi2 = ',chi2
+    
+    fn = "spec_output_"+str(specnumber)+".out"
+    f = open(fn, "a")
+    escape_fraction=len(wavel)/(1.0*len(wavelt))
+
+    f.write(" ".join([str(logNH),"\t"+str(Vmax),"\t"+str(logZ),"\t"+str(escape_fraction),"\t"+str(chi2)]))
+    f.write("\n")
+    f.close()
+
+
     sys.stdout.flush()
     return -1.0*chi2
                                     
 
-def lnlike(params,Geom,wl_obs,f_obs,f_err,gauss_width,logZ,scaling,shift):
+def lnlike(params,Geom,wl_obs,f_obs,f_err,gauss_width,logZ,scaling,shift,specnumber):
 	logNH,Vmax=params
-	return spectralike(logNH,Vmax,gauss_width,logZ,scaling,shift,Geom,wl_obs,f_obs,f_err)
+	return spectralike(logNH,Vmax,gauss_width,logZ,scaling,shift,Geom,wl_obs,f_obs,f_err,specnumber)
 
-def lnlikeZ(params,Geom,wl_obs,f_obs,f_err,gauss_width,scaling,shift):
+def lnlikeZ(params,Geom,wl_obs,f_obs,f_err,gauss_width,scaling,shift,specnumber):
 	logNH,Vmax,logZ=params
-	return spectralike(logNH,Vmax,gauss_width,logZ,scaling,shift,Geom,wl_obs,f_obs,f_err)
+	return spectralike(logNH,Vmax,gauss_width,logZ,scaling,shift,Geom,wl_obs,f_obs,f_err,specnumber)
 
 
 
 ###### NEED TO BE REDEFINED TO ACCOUNT FOR THE ANGLE ######
-def lnlikeZTH(params,Geom,wl_obs,f_obs,f_err,gauss_width,logZ,scaling,shift):
-	logNH,Vmax,logZ=params
-	return spectralike(logNH,Vmax,gauss_width,logZ,scaling,shift,Geom,wl_obs,f_obs,f_err)
+def lnlikeZTH(params,Geom,wl_obs,f_obs,f_err,gauss_width,logZ,scaling,shift,specnumber):
+	logNH,Vmax,logZ,theta=params
+	return spectralike(logNH,Vmax,gauss_width,logZ,scaling,shift,Geom,wl_obs,f_obs,f_err,specnumber)
 
-def lnlikeTH(params,Geom,wl_obs,f_obs,f_err,gauss_width,logZ,scaling,shift):
-	logNH,Vmax=params
-	return spectralike(logNH,Vmax,gauss_width,logZ,scaling,shift,Geom,wl_obs,f_obs,f_err)
+def lnlikeTH(params,Geom,wl_obs,f_obs,f_err,gauss_width,logZ,scaling,shift,specnumber):
+	logNH,Vmax,theta=params
+	return spectralike(logNH,Vmax,gauss_width,logZ,scaling,shift,Geom,wl_obs,f_obs,f_err,specnumber)
 ###### NEED TO BE REDEFINED TO ACCOUNT FOR THE ANGLE ######
 
 
@@ -442,7 +452,7 @@ if not pool.is_master():
 
 
 
-#sampler = emcee.EnsembleSampler(nwalkers, ndim, lnlike, args=(Geom,wl_obs,f_obs,f_err,gauss_width,logZ,scaling,shift),threads=nwalkers)
+#sampler = emcee.EnsembleSampler(nwalkers, ndim, lnlike, args=(Geom,wl_obs,f_obs,f_err,gauss_width,logZ,scaling,shift,nspec),threads=nwalkers)
 if use_ptsampler:
 	# use a flat prior
 	def logp(x):
@@ -453,38 +463,38 @@ if use_ptsampler:
 	#SAMPLER AND SEEDS ARE DEFINED ACCORDING TO THE MCMC PARAMETERS CHOSEN
 	if parameters==['NH','Vmax']:
 		pos = [[NH[i],V[i]] for i in range(nwalkers)]
-		sampler = PTSampler(ntemps,nwalkers,ndim,lnlike,logp,loglargs=(Geom,wl_obs,f_obs,f_err,gauss_width,logZ,scaling,shift),pool=pool)
+		sampler = PTSampler(ntemps,nwalkers,ndim,lnlike,logp,loglargs=(Geom,wl_obs,f_obs,f_err,gauss_width,logZ,scaling,shift,nspec),pool=pool)
 	elif parameters==['NH','Vmax','Z']:
 		pos = [[NH[i],V[i],Z[i]] for i in range(nwalkers)]
-		sampler = PTSampler(ntemps,nwalkers,ndim,lnlikeZ,logp,loglargs=(Geom,wl_obs,f_obs,f_err,gauss_width,scaling,shift),pool=pool)
+		sampler = PTSampler(ntemps,nwalkers,ndim,lnlikeZ,logp,loglargs=(Geom,wl_obs,f_obs,f_err,gauss_width,scaling,shift,nspec),pool=pool)
 	elif parameters==['NH','Vmax','Z','theta']:
 		pos = [[NH[i],V[i],Z[i],TH[i]] for i in range(nwalkers)]
-		sampler = PTSampler(ntemps,nwalkers,ndim,lnlikeZTH,logp,loglargs=(Geom,wl_obs,f_obs,f_err,gauss_width,scaling,shift),pool=pool)
+		sampler = PTSampler(ntemps,nwalkers,ndim,lnlikeZTH,logp,loglargs=(Geom,wl_obs,f_obs,f_err,gauss_width,scaling,shift,nspec),pool=pool)
 	elif parameters==['NH','Vmax','theta']:
 		pos = [[NH[i],V[i],TH[i]] for i in range(nwalkers)]
-		sampler = PTSampler(ntemps,nwalkers,ndim,lnlikeTH,logp,loglargs=(Geom,wl_obs,f_obs,f_err,gauss_width,logZ,scaling,shift),pool=pool)
+		sampler = PTSampler(ntemps,nwalkers,ndim,lnlikeTH,logp,loglargs=(Geom,wl_obs,f_obs,f_err,gauss_width,logZ,scaling,shift,nspec),pool=pool)
 	else:
 		pos = [[NH[i],V[i],Z[i]] for i in range(nwalkers)]
-		sampler = PTSampler(ntemps,nwalkers,ndim,lnlikeZ,logp,loglargs=(Geom,wl_obs,f_obs,f_err,gauss_width,scaling,shift),pool=pool)
+		sampler = PTSampler(ntemps,nwalkers,ndim,lnlikeZ,logp,loglargs=(Geom,wl_obs,f_obs,f_err,gauss_width,scaling,shift,nspec),pool=pool)
 
 	
 else:
 	#SAMPLER AND SEEDS ARE DEFINED ACCORDING TO THE MCMC PARAMETERS CHOSEN
 	if parameters==['NH','Vmax']:
 		pos = [[NH[i],V[i]] for i in range(nwalkers)]
-		sampler = emcee.EnsembleSampler(nwalkers, ndim, lnlike, args=(Geom,wl_obs,f_obs,f_err,gauss_width,logZ,scaling,shift),pool=pool)
+		sampler = emcee.EnsembleSampler(nwalkers, ndim, lnlike, args=(Geom,wl_obs,f_obs,f_err,gauss_width,logZ,scaling,shift,nspec),pool=pool)
 	elif parameters==['NH','Vmax','Z']:
 		pos = [[NH[i],V[i],Z[i]] for i in range(nwalkers)]
-		sampler = emcee.EnsembleSampler(nwalkers, ndim, lnlikeZ, args=(Geom,wl_obs,f_obs,f_err,gauss_width,scaling,shift),pool=pool)
+		sampler = emcee.EnsembleSampler(nwalkers, ndim, lnlikeZ, args=(Geom,wl_obs,f_obs,f_err,gauss_width,scaling,shift,nspec),pool=pool)
 	elif parameters==['NH','Vmax','Z','theta']:
 		pos = [[NH[i],V[i],Z[i],TH[i]] for i in range(nwalkers)]
-		sampler = emcee.EnsembleSampler(nwalkers, ndim, lnlikeZTH, args=(Geom,wl_obs,f_obs,f_err,gauss_width,scaling,shift),pool=pool)
+		sampler = emcee.EnsembleSampler(nwalkers, ndim, lnlikeZTH, args=(Geom,wl_obs,f_obs,f_err,gauss_width,scaling,shift,nspec),pool=pool)
 	elif parameters==['NH','Vmax','theta']:
 		pos = [[NH[i],V[i],TH[i]] for i in range(nwalkers)]
-		sampler = emcee.EnsembleSampler(nwalkers, ndim, lnlikeTH, args=(Geom,wl_obs,f_obs,f_err,gauss_width,scaling,shift),pool=pool)
+		sampler = emcee.EnsembleSampler(nwalkers, ndim, lnlikeTH, args=(Geom,wl_obs,f_obs,f_err,gauss_width,scaling,shift,nspec),pool=pool)
 	else:
 		pos = [[NH[i],V[i]] for i in range(nwalkers)]
-		sampler = emcee.EnsembleSampler(nwalkers, ndim, lnlikeZ, args=(Geom,wl_obs,f_obs,f_err,gauss_width,scaling,shift),pool=pool)
+		sampler = emcee.EnsembleSampler(nwalkers, ndim, lnlike, args=(Geom,wl_obs,f_obs,f_err,gauss_width,scaling,shift,nspec),pool=pool)
 
 
 
@@ -520,6 +530,7 @@ for pos, prob, rstate in sampler.sample(pos0, prob, state, iterations=niter):
     # Write the current position to a file, one line per walker                                                                                                                                                                                                                
     f = open(fn, "a")
     f.write("\n".join(["\t".join([str(q) for q in p]) for p in pos]))
+    #f.write("\n".join(["\t".join( pos.tolist()[i] +[prob.tolist()[i]] )  for i in range( len(prob) ) ] ) )
     f.write("\n")
     f.close()
 
