@@ -150,7 +150,7 @@ def read_wave(filename):
     f=open(filename, "rb")
     f.read(8) #int Nphotons
     Np=unpack('l', f.read(8))[0]
-#    print Np
+    # print Np
     interact=np.empty(Np)
     for i in range(Np):  interact[i]= unpack('i', f.read(4))[0] 
     # reading interact array. (int array). 4 is the size of an int. and Np is 
