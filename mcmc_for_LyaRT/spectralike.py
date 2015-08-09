@@ -97,8 +97,8 @@ logZ=-2.0 # log(Z/Zsun)
 DlogZ=0.3
 
 theta=0
-Dtheta=np.pi/4
-
+Dtheta=np.pi/2
+#np.rand
 
 gauss_width=90.0 #km/s
 
@@ -112,7 +112,7 @@ NH=np.abs(NH)
 V=Vmax+DVmax*randn(nwalkers)
 V=np.abs(V)
 Z=logZ+DlogZ*randn(nwalkers)
-TH=theta+Dtheta*randn(nwalkers)
+TH=theta+Dtheta*np.random.random(nwalkers)
 
 #### CRUCIAL, DEFINE SEEDS FOR INPUT PARAMETERS!!!!!!! #####
 
@@ -170,9 +170,38 @@ def read_wave(filename):
     wl=np.empty(Np)
     for i in range(Np):  wl[i]= unpack('f', f.read(4))[0] 
     
-    f.read(4*Np) #nscat size (int array)
+    #f.read(4*Np) #nscat size (int array)
    
-    f.read(20*Np) #posarr (3Np) and angarr (2Np) size (int array )
+    nscat=np.empty(Np)
+    for i in range(Np):  
+        nscat[i]= unpack('f', f.read(4))[0] 
+    
+
+
+    #f.read(20*Np) #posarr (3Np) and angarr (2Np) size (int array )
+    
+
+    #pos array
+    x=np.empty(Np)
+    y=np.empty(Np)
+    z=np.empty(Np)
+    for i in range(Np):  
+        x[i]= unpack('f', f.read(4))[0] 
+        y[i]= unpack('f', f.read(4))[0] 
+        z[i]= unpack('f', f.read(4))[0] 
+        #print i
+        #print Np
+    
+    #ang array
+    phi=np.empty(Np)
+    theta=np.empty(Np)
+    for i in range(Np):  
+        theta[i]= unpack('f', f.read(4))[0]
+        phi[i]= unpack('f', f.read(4))[0] 
+
+
+
+
     
     wl0=np.empty(Np)
     for i in range(Np):  wl0[i]= unpack('f', f.read(4))[0] 
@@ -181,7 +210,7 @@ def read_wave(filename):
     wl=lambda_0/(1+ wl*Kth)
     wl0=lambda_0/(1+ wl0*Kth)
     
-    return wl, wl0,interact
+    return wl, wl0,interact,nscat, x,y,z,theta,pi
 
 
 def gen_par_file_LyaRT(logNH,Vmax,gauss_width,logZ,Geom,dlambda=11.0,user=user_path,in_dir='LyaRT/data/Params/grid/',out_dir='mcmcrun/',NPhotons=20000,xcrit=4.0,Temp = 0.0):
@@ -306,8 +335,8 @@ def gen_par_file_LyaRT(logNH,Vmax,gauss_width,logZ,Geom,dlambda=11.0,user=user_p
     return 0
     
 
-def spectralike(logNH,Vmax,gauss_width,logZ,scaling,shift,Geom,wl_obs,f_obs,f_err,specnumber,wl_min=1195.0,wl_max=1237.0,wl_0=1215.668,user="/home/CEFCA/aaorsi/",in_dir="LyaRT/data/Params/grid/",out_dir="mcmcrun/"):
-    if Vmax>1500.0 or logNH>21.5 or Vmax<10.0 or logNH < 16 or logZ<-5.0:
+def spectralike(logNH,Vmax,gauss_width,logZ,scaling,shift,theta,Geom,wl_obs,f_obs,f_err,specnumber,wl_min=1195.0,wl_max=1237.0,wl_0=1215.668,theta_bins=5,user="/home/CEFCA/aaorsi/",in_dir="LyaRT/data/Params/grid/",out_dir="mcmcrun/"):
+    if Vmax>1500.0 or logNH>21.5 or Vmax<10.0 or logNH < 14 or logZ<-5.0:
         chi2=np.inf
     else:
         out_dir=user+out_dir
@@ -341,7 +370,12 @@ def spectralike(logNH,Vmax,gauss_width,logZ,scaling,shift,Geom,wl_obs,f_obs,f_er
 #                print 'abrio'        
 #       sys.exit(0)
                                     
-        wavelt,wavel0t,interact=read_wave(outname)
+        wavelt,wavel0t,interact,nscat, x,y,z,theta,pi=read_wave(outname)
+	if Geam=='Biconical_Wind':
+		theta_bins
+	
+	
+
         dust_abs=interact==3
         wavel=wavelt[~dust_abs]
         wavel0=wavel0t[~dust_abs]
@@ -358,7 +392,7 @@ def spectralike(logNH,Vmax,gauss_width,logZ,scaling,shift,Geom,wl_obs,f_obs,f_er
         wl_hist= wl_teo  - 1.0*d_wl/2.0
         wl_hist=np.append(wl_hist, wl_hist[-1] + d_wl )
         out_weights=gaussian(wavel0,lambda_0=1215.668,sigma_v=gauss_width,lambda_up=np.amax(wavel0), lambda_low=np.amin(wavel0))
-            
+	out_weights_all=gaussian(wavelt,lambda_0=1215.668,sigma_v=gauss_width,lambda_up=np.amax(wavelt), lambda_low=np.amin(wavelt))
         flux_teo, wl=np.histogram(wavel,bins=wl_hist,normed=False,weights=out_weights)
         
         centroid_teo=np.sum(np.multiply(flux_teo,wl_teo))/np.sum(flux_teo)
@@ -406,24 +440,24 @@ def spectralike(logNH,Vmax,gauss_width,logZ,scaling,shift,Geom,wl_obs,f_obs,f_er
     return -1.0*chi2
                                     
 
-def lnlike(params,Geom,wl_obs,f_obs,f_err,gauss_width,logZ,scaling,shift,specnumber):
+def lnlike(params,Geom,wl_obs,f_obs,f_err,gauss_width,logZ,theta,scaling,shift,specnumber):
 	logNH,Vmax=params
-	return spectralike(logNH,Vmax,gauss_width,logZ,scaling,shift,Geom,wl_obs,f_obs,f_err,specnumber)
+	return spectralike(logNH,Vmax,gauss_width,logZ,scaling,shift,theta,Geom,wl_obs,f_obs,f_err,specnumber)
 
-def lnlikeZ(params,Geom,wl_obs,f_obs,f_err,gauss_width,scaling,shift,specnumber):
+def lnlikeZ(params,Geom,wl_obs,f_obs,f_err,gauss_width,theta,scaling,shift,specnumber):
 	logNH,Vmax,logZ=params
-	return spectralike(logNH,Vmax,gauss_width,logZ,scaling,shift,Geom,wl_obs,f_obs,f_err,specnumber)
+	return spectralike(logNH,Vmax,gauss_width,logZ,scaling,shift,theta,Geom,wl_obs,f_obs,f_err,specnumber)
 
 
 
 ###### NEED TO BE REDEFINED TO ACCOUNT FOR THE ANGLE ######
-def lnlikeZTH(params,Geom,wl_obs,f_obs,f_err,gauss_width,logZ,scaling,shift,specnumber):
+def lnlikeZTH(params,Geom,wl_obs,f_obs,f_err,gauss_width,logZ,theta,scaling,shift,specnumber):
 	logNH,Vmax,logZ,theta=params
-	return spectralike(logNH,Vmax,gauss_width,logZ,scaling,shift,Geom,wl_obs,f_obs,f_err,specnumber)
+	return spectralike(logNH,Vmax,gauss_width,logZ,scaling,shift,theta,Geom,wl_obs,f_obs,f_err,specnumber)
 
-def lnlikeTH(params,Geom,wl_obs,f_obs,f_err,gauss_width,logZ,scaling,shift,specnumber):
+def lnlikeTH(params,Geom,wl_obs,f_obs,f_err,gauss_width,theta,logZ,scaling,shift,specnumber):
 	logNH,Vmax,theta=params
-	return spectralike(logNH,Vmax,gauss_width,logZ,scaling,shift,Geom,wl_obs,f_obs,f_err,specnumber)
+	return spectralike(logNH,Vmax,gauss_width,logZ,scaling,shift,theta,Geom,wl_obs,f_obs,f_err,specnumber)
 ###### NEED TO BE REDEFINED TO ACCOUNT FOR THE ANGLE ######
 
 
@@ -463,10 +497,10 @@ if use_ptsampler:
 	#SAMPLER AND SEEDS ARE DEFINED ACCORDING TO THE MCMC PARAMETERS CHOSEN
 	if parameters==['NH','Vmax']:
 		pos = [[NH[i],V[i]] for i in range(nwalkers)]
-		sampler = PTSampler(ntemps,nwalkers,ndim,lnlike,logp,loglargs=(Geom,wl_obs,f_obs,f_err,gauss_width,logZ,scaling,shift,nspec),pool=pool)
+		sampler = PTSampler(ntemps,nwalkers,ndim,lnlike,logp,loglargs=(Geom,wl_obs,f_obs,f_err,gauss_width,theta,logZ,scaling,shift,nspec),pool=pool)
 	elif parameters==['NH','Vmax','Z']:
 		pos = [[NH[i],V[i],Z[i]] for i in range(nwalkers)]
-		sampler = PTSampler(ntemps,nwalkers,ndim,lnlikeZ,logp,loglargs=(Geom,wl_obs,f_obs,f_err,gauss_width,scaling,shift,nspec),pool=pool)
+		sampler = PTSampler(ntemps,nwalkers,ndim,lnlikeZ,logp,loglargs=(Geom,wl_obs,f_obs,f_err,gauss_width,theta,scaling,shift,nspec),pool=pool)
 	elif parameters==['NH','Vmax','Z','theta']:
 		pos = [[NH[i],V[i],Z[i],TH[i]] for i in range(nwalkers)]
 		sampler = PTSampler(ntemps,nwalkers,ndim,lnlikeZTH,logp,loglargs=(Geom,wl_obs,f_obs,f_err,gauss_width,scaling,shift,nspec),pool=pool)
@@ -475,7 +509,7 @@ if use_ptsampler:
 		sampler = PTSampler(ntemps,nwalkers,ndim,lnlikeTH,logp,loglargs=(Geom,wl_obs,f_obs,f_err,gauss_width,logZ,scaling,shift,nspec),pool=pool)
 	else:
 		pos = [[NH[i],V[i],Z[i]] for i in range(nwalkers)]
-		sampler = PTSampler(ntemps,nwalkers,ndim,lnlikeZ,logp,loglargs=(Geom,wl_obs,f_obs,f_err,gauss_width,scaling,shift,nspec),pool=pool)
+		sampler = PTSampler(ntemps,nwalkers,ndim,lnlikeZ,logp,loglargs=(Geom,wl_obs,f_obs,f_err,gauss_width,theta,logZ,scaling,shift,nspec),pool=pool)
 
 	
 else:
