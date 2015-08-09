@@ -370,9 +370,28 @@ def spectralike(logNH,Vmax,gauss_width,logZ,scaling,shift,theta,Geom,wl_obs,f_ob
 #                print 'abrio'        
 #       sys.exit(0)
                                     
-        wavelt,wavel0t,interact,nscat, x,y,z,theta,pi=read_wave(outname)
+        wavelt,wavel0t,interact,nscat, x,y,z,polar,azim=read_wave(outname)
 	if Geam=='Biconical_Wind':
-		theta_bins
+		delta_th=np.pi/(2.0*theta_bins)
+		theta_values=np.arange(0,np.pi/2,delta_th)
+		argth=np.argmin(np.abs(theta-theta_values))
+		thl=theta_values[argth]
+		thm=theta_values[argth]
+		wl=polar>thl
+		wm=polar[wl]<thm
+		wavelt1=wavelt[wl][wm]
+		wavel0t1=wavel0t[wl][wm]
+		interact1=interact[wl][wm]
+		nscat1=nscat[wl][wm]
+		x1=x[wl][wm]
+		y1=y[wl][wm]
+		z1=z[wl][wm]
+		polar1=polar[wl][wm]
+		azim1=azim[wl][wm]
+		
+		
+		
+		
 	
 	
 
