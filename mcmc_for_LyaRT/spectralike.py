@@ -375,8 +375,14 @@ def spectralike(logNH,Vmax,gauss_width,logZ,scaling,shift,theta,Geom,wl_obs,f_ob
 		delta_th=np.pi/(2.0*theta_bins)
 		theta_values=np.arange(0,np.pi/2,delta_th)
 		argth=np.argmin(np.abs(theta-theta_values))
-		thl=theta_values[argth]
-		thm=theta_values[argth]
+		theta_out=theta_values[argth]
+		if argth< len(theta_values)-1:
+			thl=theta_values[argth]
+			thm=theta_values[argth+1]
+			
+		else:
+			thl=theta_values[argth-1]
+			thm=theta_values[argth]
 		wl=polar>thl
 		wm=polar[wl]<thm
 		wavelt1=wavelt[wl][wm]
@@ -388,8 +394,43 @@ def spectralike(logNH,Vmax,gauss_width,logZ,scaling,shift,theta,Geom,wl_obs,f_ob
 		z1=z[wl][wm]
 		polar1=polar[wl][wm]
 		azim1=azim[wl][wm]
+
+
+		theta_values=np.arange(np.pi/2,np.pi,delta_th)
+		argth=np.argmin(np.abs(np.pi-theta-theta_values))
+		if argth> 0:
+			thl=theta_values[argth-1]
+			thm=theta_values[argth]
+			
+		else:
+			thl=theta_values[argth]
+			thm=theta_values[argth+1]
 		
-		
+		thl=theta_values[argth-1]
+		thm=theta_values[argth]
+		wl=polar>thl
+		wm=polar[wl]<thm
+		wavelt2=wavelt[wl][wm]
+		wavel0t2=wavel0t[wl][wm]
+		interact2=interact[wl][wm]
+		nscat2=nscat[wl][wm]
+		x2=x[wl][wm]
+		y2=y[wl][wm]
+		z2=z[wl][wm]
+		polar2=polar[wl][wm]
+		azim2=azim[wl][wm]
+	
+	
+		wavelt=np.append(wavelt1,wavelt2)
+		wavel0t=np.append(wavel0t1,wavel0t2)
+		interact=np.append(interact1,interact2)
+		nscat=np.append(nscat1,nscat2)
+		x=np.append(x1,x2)
+		y=np.append(y1,y2)
+		z=np.append(z1,z2)
+		polar=np.append(polar1,polar2)
+		azim=np.append(azim1,azim2)
+	
 		
 		
 	
@@ -399,10 +440,10 @@ def spectralike(logNH,Vmax,gauss_width,logZ,scaling,shift,theta,Geom,wl_obs,f_ob
         wavel=wavelt[~dust_abs]
         wavel0=wavel0t[~dust_abs]
         if len(wavel) == 0:
-					print 'zero-sized output array found in '+outname
-					sys.stdout.flush()
-					chi2=1000000000
-					return -1*chi2
+		print 'zero-sized output array found in '+outname
+		sys.stdout.flush()
+		chi2=1000000000
+		return -1*chi2
 	
         wl_max=np.amax(wavel)
         wl_min=np.amin(wavel)
@@ -447,7 +488,10 @@ def spectralike(logNH,Vmax,gauss_width,logZ,scaling,shift,theta,Geom,wl_obs,f_ob
 	fn = "spec_output_"+str(specnumber)+".out"
 	f = open(fn, "a")
 	escape_fraction=len(wavel)/(1.0*len(wavelt))
-	f.write(" ".join([str(logNH),"\t"+str(Vmax),"\t"+str(logZ),"\t"+str(escape_fraction),"\t"+str(chi2)]))
+	if Geam=='Biconical_Wind':
+		f.write(" ".join([str(logNH),"\t"+str(Vmax),"\t"+str(logZ),"\t"+str(theta_out),"\t"+str(escape_fraction),"\t"+str(chi2)]))
+	else:
+		f.write(" ".join([str(logNH),"\t"+str(Vmax),"\t"+str(logZ),"\t"+str(escape_fraction),"\t"+str(chi2)]))
 	f.write("\n")
 	f.close()
 
