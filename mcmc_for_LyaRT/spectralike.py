@@ -338,7 +338,7 @@ def gen_par_file_LyaRT(logNH,Vmax,gauss_width,logZ,Geom,dlambda=11.0,user=user_p
     
 
 def spectralike(logNH,Vmax,gauss_width,logZ,scaling,shift,theta,Geom,wl_obs,f_obs,f_err,specnumber,wl_min=1195.0,wl_max=1237.0,wl_0=1215.668,theta_bins=5,user="/home/CEFCA/aaorsi/",in_dir="LyaRT/data/Params/grid/",out_dir="mcmcrun/"):
-    if Vmax>1500.0 or logNH>21.5 or Vmax<10.0 or logNH < 14 or logZ<-5.0:
+    if Vmax>1500.0 or logNH>21.5 or Vmax<10.0 or logNH < 14 or logZ<-5.0 if theta<0 if theta>np.pi/2:
         chi2=np.inf
     else:
         out_dir=user+out_dir
