@@ -29,9 +29,9 @@ if use_ptsampler:
 
 #### Define Geometry ####
 
-Geom='ThinShell'
+#Geom='ThinShell'
 #Geom='Wind'
-#Geom='Biconical_Wind'
+Geom='Biconical_Wind'
 
 #### Define Geometry ####
 
@@ -51,10 +51,10 @@ LyaRT_path="/home/CEFCA/aaorsi/LyaRT/src/"  #LyaRT source code
 
 ####### pick which parameters will be minimized by mcmc, be aware of  uncommenting  one of the posibilities  below #######
 
-#parameters=['NH','Vmax','Z','theta']
-#parameters=['NH','Vmax','theta']
+parameters=['NH','Vmax','Z','theta']
+parameters=['NH','Vmax','theta']
 #parameters=['NH','Vmax']               # By default
-parameters=['NH','Vmax','Z']
+#parameters=['NH','Vmax','Z']
 
 ####### pick which parameters will be minimized by mcmc, be aware of  uncommenting  one of the posibilities  above #######
 
@@ -67,8 +67,10 @@ elif parameters==['NH','Vmax','Z']:
 	ndim=3
 elif parameters==['NH','Vmax','Z','theta']:
 	ndim=4
+	Geom='Biconical_Wind'
 elif parameters==['NH','Vmax','theta']:
 	ndim=3
+	Geom='Biconical_Wind'
 else:
 	ndim=2
 
