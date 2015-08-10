@@ -212,7 +212,7 @@ def read_wave(filename):
     wl=lambda_0/(1+ wl*Kth)
     wl0=lambda_0/(1+ wl0*Kth)
     
-    return wl, wl0,interact,nscat, x,y,z,theta,pi
+    return wl, wl0,interact,nscat, x,y,z,theta,phi
 
 
 def gen_par_file_LyaRT(logNH,Vmax,gauss_width,logZ,Geom,dlambda=11.0,user=user_path,in_dir='LyaRT/data/Params/grid/',out_dir='mcmcrun/',NPhotons=20000,xcrit=4.0,Temp = 0.0):
@@ -373,7 +373,7 @@ def spectralike(logNH,Vmax,gauss_width,logZ,scaling,shift,theta,Geom,wl_obs,f_ob
 #       sys.exit(0)
                                     
         wavelt,wavel0t,interact,nscat, x,y,z,polar,azim=read_wave(outname)
-	if Geam=='Biconical_Wind':
+	if Geom=='Biconical_Wind':
 		delta_th=np.pi/(2.0*theta_bins)
 		theta_values=np.arange(0,np.pi/2,delta_th)
 		argth=np.argmin(np.abs(theta-theta_values))
@@ -490,7 +490,7 @@ def spectralike(logNH,Vmax,gauss_width,logZ,scaling,shift,theta,Geom,wl_obs,f_ob
 	fn = "spec_output_"+str(specnumber)+".out"
 	f = open(fn, "a")
 	escape_fraction=len(wavel)/(1.0*len(wavelt))
-	if Geam=='Biconical_Wind':
+	if Geom=='Biconical_Wind':
 		f.write(" ".join([str(logNH),"\t"+str(Vmax),"\t"+str(logZ),"\t"+str(theta_out),"\t"+str(escape_fraction),"\t"+str(chi2)]))
 	else:
 		f.write(" ".join([str(logNH),"\t"+str(Vmax),"\t"+str(logZ),"\t"+str(escape_fraction),"\t"+str(chi2)]))
