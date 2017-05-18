@@ -10,7 +10,7 @@
 SYSTYPE	= 'local'
 
 # The following are specific for the code:
-DEFFLAGS	= -DUSEREJECTION  -DTCONST -DHAPPROX -DTIMELIMIT -DGETPOSDIR  -DWRITEALL # -DXCONTINUUM # -DXINDIST  # -DTEST_RII  # -DWRITEPROFILE # -DTAUGUIDERDONI	# -DUSEREJECTION # -DWRITEPROFILE # -DWRITEALL # -DTEST_RII  
+DEFFLAGS	= -DUSEREJECTION  -DTCONST -DHAPPROX -DTIMELIMIT -DGETPOSDIR  #-DWRITEALL # -DXCONTINUUM # -DXINDIST  # -DTEST_RII  # -DWRITEPROFILE # -DTAUGUIDERDONI	# -DUSEREJECTION # -DWRITEPROFILE # -DWRITEALL # -DTEST_RII  
 
 # USERREJECTION: Use rejection method to compute vp
 # TCONST	   : Assume constant temperature --it simplifies the calculations
@@ -19,6 +19,7 @@ DEFFLAGS	= -DUSEREJECTION  -DTCONST -DHAPPROX -DTIMELIMIT -DGETPOSDIR  -DWRITEAL
 # XINDIST	   : Initial x is drawn from a given distribution
 # XCONTINUUM       :Initial flat distrubtion of photons in the range  [x-5,x+5]
 # GETPOSDIR	   : In the output file, get additionally the position and direction of the escaping photon
+# WRITEALL     : Write scatter events for the first 1000 photons
 
 ifeq ($(SYSTYPE),'PUC-geryon')
 	CC        = gcc

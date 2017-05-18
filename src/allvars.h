@@ -24,7 +24,7 @@
 #define KnH		 1e35
 #define MAXX	 20			// This is the maximum value of x in te lookup table to get H(x)
 #define NLINES	 10		
-#define MAXTIME  0.5		// Minutes
+#define MAXTIME  6000 		// Minutes
 
 // Physical constants
 #define zstar 0.02				// Solar Metallicity
@@ -124,7 +124,8 @@ double Temp,mean_nH,mean_z,xcritval,mean_nH_static,ColDens;
 	double Vrot, x_mean;
         float *XArr,*X0Arr,*PosArr,*AngleArr,*PosArrLong;
 	int *InterArr, *NscatArr, *BscatArr ;
-	double alpha_vprof, sigma_vprof,app_angle;
+
+	double alpha_vprof, sigma_vprof,app_angle , f_Anti_wind , HOMOGENIUOS_DENSITY_SID , V_dense_region_sid , V_transparent_region_sid ;
 long idc_old,idc,nbins,nout;
 double rx0,ry0,rz0,rxf,ryf,rzf,radius,cx,cy,cz,acrit,aarg;
 double r0,rE,a_,g_,b_,s_,px,py,pz,s1,s2,s3,s4,s5,px0,py0,pz0;
