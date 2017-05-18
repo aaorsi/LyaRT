@@ -42,7 +42,6 @@ float uper1, float uper2, float H_x,float xp, int inter)
 		break;
 	}
 
-
 	if (fout = fopen(OutFile,"a"))
 	{
 		if (nscat == 0)
@@ -50,7 +49,6 @@ float uper1, float uper2, float H_x,float xp, int inter)
 			fprintf(fout,"# Photon %ld\n",ip);
 			fprintf(fout,"# NScatt	x[freq]		H(x,a)	(rx)	(ry)	(rz)	radius	upar	uper1	uper2 xp Interaction \n");
 		}
-		
 		fprintf(fout," %ld\t %f\t %f\t %f\t %f\t %f\t %f\t %f\t %f\t %f\t %f\t %s\n",nscat,x,H_x,(rxf),(ryf),(rzf),\
 		radius,upar,uper1,uper2,xp,itype);	
 		fclose(fout);

@@ -265,6 +265,7 @@ int main(int argc, char *argv[])
   for (ip=0;ip < NPhotons;ip++)
 	{
         nscat = 0;
+        //printf("Nuevo foton\n");
 		
 /*		if( ip > 999 & ip % 1000 == 0)
 	  	{
@@ -342,19 +343,77 @@ int main(int argc, char *argv[])
 					printf("H_x is nan\n");
 
 //				H_x = 0.;     // H_x disables H scattering. 
+
+                //Siddhartha walawala change to....
+
+                double nH_sid , r0_sid , px0_sid , py0_sid , pz0_sid , th_c_sid ;
+                int SidCond;
+
+                nH_sid = CellArr[idc].nH;
+
+                r0_sid = sqrt( SQR(P[ip].x) + SQR(P[ip].y)+ SQR(P[ip].z));
+
+                px0_sid = P[ip].x/r0_sid;
+                py0_sid = P[ip].y/r0_sid;
+                pz0_sid = P[ip].z/r0_sid;
+
+                
+                th_c_sid = acos( pz0_sid );
+
+                if (strcmp(GeomName,"Anti_Wind")==0 && idc != 0)
+                {    
+                SidCond = (pz0_sid > 0) ? ( (th_c_sid > app_angle ) ? 1 : 0) : \ 
+                          ((th_c_sid < Pi - app_angle ) ? 1 : 0);
+
+                    if ( SidCond == 1 )
+                    {
+                        nH_sid = nH_sid * f_Anti_wind;
+                    }
+ 
+                }
+
+
+                if (strcmp(GeomName,"Slab_plus_bicone")==0 && idc != 0)
+                {    
+                SidCond = (pz0_sid > 0) ? ( (th_c_sid > app_angle ) ? 1 : 0) : \ 
+                          ((th_c_sid < Pi - app_angle ) ? 1 : 0); 
+
+                    if ( SidCond == 1 ) 
+                    {
+                        nH_sid = HOMOGENIUOS_DENSITY_SID ;
+                        CellArr[idc].vbulk[0] = V_dense_region_sid ; 
+                    }
+ 
+                    if ( SidCond == 0 ) 
+                    {
+                        CellArr[idc].vbulk[0] = V_transparent_region_sid ;
+                    }
+                    
+
+                }
+     
+
+                //printf("%f , %f , %f\n"  , th_c_sid , nH_sid , CellArr[idc].vbulk[0]  );
+
+
 	
 #ifdef TCONST 
 				
-				s_nH = TPar * H_x*CellArr[idc].nH;
+				//s_nH = TPar * H_x*CellArr[idc].nH;
+				s_nH = TPar * H_x* nH_sid ;
 
 #else	
-				s_nH = sx_const * pow(CellArr[idc].T,-0.5)*H_x*CellArr[idc].nH;
+				s_nH = sx_const * pow(CellArr[idc].T,-0.5)*H_x* nH_sid ;
+				//s_nH = sx_const * pow(CellArr[idc].T,-0.5)*H_x*CellArr[idc].nH;
 #endif
 
 #ifdef TAUGUIDERDONI
-				s_nd = Ext_Ratio * pow(CellArr[idc].z/zstar,spar) * CellArr[idc].nH/NHConst;
+				s_nd = Ext_Ratio * pow(CellArr[idc].z/zstar,spar) * nH_sid /NHConst;
+				//s_nd = Ext_Ratio * pow(CellArr[idc].z/zstar,spar) * CellArr[idc].nH/NHConst;
 #else
-				s_nd =  ext_zstar * CellArr[idc].z * CellArr[idc].nH;
+				s_nd =  ext_zstar * CellArr[idc].z * nH_sid ;
+				//s_nd =  ext_zstar * CellArr[idc].z * CellArr[idc].nH;
+                //Siddhartha walawala change to.... HERE. I changed this
 #endif
 	
 				s_sum = s_nH + s_nd;
@@ -481,9 +540,32 @@ escape:
 				break;
 				
 				case 2:
+//de aqui, hasta el endif --> sidd
+#ifdef USEREJECTION
+			upar = -999.0;
+			i = 0;
+			do
+			{
+				xi0 = gsl_rng_uniform (r);
 				xi1 = gsl_rng_uniform (r);
 				xi2 = gsl_rng_uniform (r);
-				xi3 = gsl_rng_uniform (r);
+				upar = vp_rejection(P[ip].xp,a_par,xi0,xi1,xi2);
+				i++;
+			} while(upar == -999.0);
+//	if (i > 100000)
+//						printf("VP_REJECTION TOOK %d tries to get upar = %f, x = %f,  nscatter = %d\n" \
+						 ,i,upar,xp,nscat);
+#endif
+// todo este ifdef lo ha puesto sidd
+
+				xi1 = gsl_rng_uniform (r);
+				xi2 = gsl_rng_uniform (r);
+				xi3 = gsl_rng_uniform (r);                          // sidd
+				xi3 = (xi3 == 0.0) ? gsl_rng_uniform (r) : xi3;     // sidd
+				xi4 = gsl_rng_uniform (r);                          // sidd
+				xi5 = gsl_rng_uniform (r);                          // sidd
+				xi6 = gsl_rng_uniform (r);                          // sidd
+				xi7 = gsl_rng_uniform (r);                          // sidd
 
 				dust_interaction(P,ip);
 				if (end_syg ==1)
@@ -559,8 +641,8 @@ escape:
 //		if ((ip >= np_min && nout >= nout_max) || \
 //			(ip >= np_max))
 
-			if ((ip >= np_min && nout >= nout_max) || \
-			(ip >= np_max) )
+//			if ((ip >= np_min && nout >= nout_max) || 
+			if ( 1 == 2 ) //)
 //			(ip >= np_max && nout >= (int) nout_max/5) || \
 
 			{

@@ -22,7 +22,7 @@ void get_HG(float *HGList)
 	float xi_list,mu_list,xi0,mu0,xi1,mu1,mu;
 	long i;
 
-	if (fd = fopen(dipfile,"r"))
+	if (fd = fopen("/global/users/sidgurung/Lalpha/LyaRT/data/tables/hg/HG","r"))
 	{
 		fgets(buf,10,fd);
 		i = 0;

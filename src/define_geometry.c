@@ -80,6 +80,10 @@ void define_geometry(char *GeomName, cell *CellArr)
 	  GType = 10;
 	if (strcmp(GeomName,"Biconical_Wind") == 0)   // Similar to a wind, but with a biconical geometry.
 	  GType = 11;
+	if (strcmp(GeomName,"Anti_Wind") == 0)   // Similar to a wind, but with a biconical geometry.
+	  GType = 12;
+	if (strcmp(GeomName,"Slab_plus_bicone") == 0)   // Similar to a wind, but with a biconical geometry.
+	  GType = 13;
 
 	id=0;
 
@@ -230,6 +234,7 @@ void define_geometry(char *GeomName, cell *CellArr)
 
 */
 
+
 		id = 0;
 		CellArr[id].id = 0;			
 		CellArr[id].neig[0]  = 0;
@@ -262,7 +267,7 @@ void define_geometry(char *GeomName, cell *CellArr)
 			CellArr[id].z		= mean_z;
 			CellArr[id].r		= r;			
 			CellArr[id].vbulk[0]= vmax;
-			CellArr[id].nH		= KnH * Ndot / ( 4 * Pi * SQR(r) * vmax);
+			CellArr[id].nH		=  KnH * 0.74 * Ndot / ( 4 * Pi * SQR(r) * vmax);
 			
 		}	
 
@@ -325,7 +330,7 @@ void define_geometry(char *GeomName, cell *CellArr)
 			CellArr[id].neig[1]  = id+1;
 			CellArr[id].p_lya 	 = 1.;
 			CellArr[id].T		 = pow(10,Temp);
-			CellArr[id].nH		 = KnH * Ndot / (4 * Pi * SQR(R_inner) * vmax);
+			CellArr[id].nH		 =  KnH * Ndot / (4 * Pi * SQR(R_inner) * vmax);
 			CellArr[id].z		 = mean_z;
 			CellArr[id].vbulk[0] = H * r;
 			CellArr[id].r		 = r;			
@@ -347,7 +352,7 @@ void define_geometry(char *GeomName, cell *CellArr)
 			CellArr[id].z		= mean_z;
 			CellArr[id].r		= r;			
 			CellArr[id].vbulk[0]= vmax;
-			CellArr[id].nH		= KnH * Ndot / ( 4 * Pi * SQR(r) * vmax);
+			CellArr[id].nH		=  KnH * Ndot / ( 4 * Pi * SQR(r) * vmax);
 			
 		}	
 
@@ -381,7 +386,7 @@ void define_geometry(char *GeomName, cell *CellArr)
 			CellArr[id].neig[1]  = id+1;
 			CellArr[id].p_lya 	 = 1.;
 			CellArr[id].T		 = pow(10,Temp);
-			CellArr[id].nH		 = KnH * Ndot / (4 * Pi * SQR(R_inner) * vmax);
+			CellArr[id].nH		 =  KnH * Ndot / (4 * Pi * SQR(R_inner) * vmax);
 			CellArr[id].z		 = mean_z;
 			CellArr[id].vbulk[0] = 0;
 			CellArr[id].r		 = r;			
@@ -403,7 +408,7 @@ void define_geometry(char *GeomName, cell *CellArr)
 			CellArr[id].z		= mean_z;
 			CellArr[id].r		= r;			
 			CellArr[id].vbulk[0]= vmax;
-			CellArr[id].nH		= KnH * Ndot / ( 4 * Pi * SQR(r) * vmax);
+			CellArr[id].nH		=  KnH * Ndot / ( 4 * Pi * SQR(r) * vmax);
 			
 		}	
 
@@ -477,7 +482,7 @@ void define_geometry(char *GeomName, cell *CellArr)
 			CellArr[id].z		= mean_z;
 			CellArr[id].r		= r;
 			CellArr[id].vbulk[0]= vmax;
-			CellArr[id].nH		= KnH * Ndot / ( 4 * Pi * SQR(r) * vmax);
+			CellArr[id].nH		=  KnH * Ndot / ( 4 * Pi * SQR(r) * vmax);
 			
 		}	
 
@@ -666,7 +671,7 @@ void define_geometry(char *GeomName, cell *CellArr)
 		  //	  break;
 		}
 	      CellArr[id].vbulk[0]= v_r;
-	      CellArr[id].nH= (v_r == 0) ? 0: KnH * Ndot / ( 4* Pi * SQR(r) * v_r);
+	      CellArr[id].nH= (v_r == 0) ? 0:  KnH * Ndot / ( 4* Pi * SQR(r) * v_r);
 	      if (i < 3)
 		{
 		  dprintd(v_r);
@@ -715,10 +720,98 @@ void define_geometry(char *GeomName, cell *CellArr)
 			CellArr[id].z		= mean_z;
 			CellArr[id].r		= r;			
 			CellArr[id].vbulk[0]= vmax;
-			CellArr[id].nH		= KnH * Ndot / ( -4 * Pi * (cos(app_angle)-1) * SQR(r) * vmax);	
+			CellArr[id].nH		=  0.74 * KnH * Ndot / ( -4 * Pi * (cos(app_angle)-1) * SQR(r) * vmax);	
 		}
 
 		break;
+        case 12:
+
+        app_angle = Pi/4.;  // By default.
+        f_Anti_wind = 1000;  // By default.
+
+
+        id = 0;
+        CellArr[id].id = 0;    
+        CellArr[id].neig[0]  = 0;
+        CellArr[id].neig[1]  = id+1;
+        CellArr[id].p_lya    = 1.; 
+        CellArr[id].T        = pow(10,Temp);
+        CellArr[id].z        = 0;
+        CellArr[id].r        = 0;   
+        CellArr[id].nH       = 0;
+        CellArr[id].vbulk[0] = 0;
+    
+        dr = (RSphere-R_inner) / (NCells-2);
+
+        for (i = 1; i<NCells; i++)
+        {
+            r = (i-1) * dr + R_inner; 
+
+            id = i;
+            CellArr[id].id = i;    
+            CellArr[id].neig[0] = id-1;
+            CellArr[id].neig[1] = id+1;
+            if (i == NCells-1)
+            CellArr[id].neig[1] = -1; 
+    
+            CellArr[id].p_lya   = 1.; 
+            CellArr[id].T       = pow(10,Temp);
+            CellArr[id].z       = mean_z;
+            CellArr[id].r       = r;    
+            CellArr[id].vbulk[0]=  vmax ;
+            CellArr[id].nH      =  KnH * 0.74 * Ndot / ( 4 * Pi * SQR(r) * vmax * ( 1 + cos(app_angle) * (f_Anti_wind-1) )   );
+    
+        }
+
+        break;  
+
+
+        case 13:
+
+        app_angle = Pi/4.;  // By default.
+        f_Anti_wind = 1000;  // By default.
+
+        V_dense_region_sid = 0. ; // By default.
+        V_transparent_region_sid = vmax ; // By default.
+
+        id = 0;
+        CellArr[id].id = 0;    
+        CellArr[id].neig[0]  = 0;
+        CellArr[id].neig[1]  = id+1;
+        CellArr[id].p_lya    = 1.; 
+        CellArr[id].T        = pow(10,Temp);
+        CellArr[id].z        = 0;
+        CellArr[id].r        = 0;   
+        CellArr[id].nH       = 0;
+        CellArr[id].vbulk[0] = 0;
+    
+        dr = (RSphere-R_inner) / (NCells-2);
+
+        for (i = 1; i<NCells; i++)
+        {
+            r = (i-1) * dr + R_inner; 
+
+            id = i;
+            CellArr[id].id = i;    
+            CellArr[id].neig[0] = id-1;
+            CellArr[id].neig[1] = id+1;
+            if (i == NCells-1)
+            CellArr[id].neig[1] = -1; 
+    
+            CellArr[id].p_lya   = 1.; 
+            CellArr[id].T       = pow(10,Temp);
+            CellArr[id].z       = mean_z;
+            CellArr[id].r       = r;    
+            CellArr[id].vbulk[0]=  V_transparent_region_sid ;
+            CellArr[id].nH      =  KnH * 0.74 * Ndot / ( 4 * Pi * SQR(r) * vmax * ( 1 + cos(app_angle) * (f_Anti_wind-1) )   );
+    
+        }
+
+        HOMOGENIUOS_DENSITY_SID = mean_nH * f_Anti_wind * 1. / ( 1 + cos(app_angle) * (f_Anti_wind-1) ) ; 
+
+         
+        break;  
+
 
 	}
 

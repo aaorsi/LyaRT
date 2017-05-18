@@ -20,10 +20,13 @@ void get_dipolar(double *dipolar_list)
 	char buf[NCHARMAX];
 	strcpy(dipfile,tabledir);
 	strcat(dipfile,"dipolar/dipolar");
-	if (fd = fopen(dipfile,"r"))
+//    dipfile = "/global/users/sidgurung/Lalpha/LyaRT/data/tables/dipolar/dipolar";
+	//if (fd = fopen(dipfile,"r"))
+	if (fd = fopen("/global/users/sidgurung/Lalpha/LyaRT/data/tables/dipolar/dipolar","r"))
 	{
 #ifndef SILENT
 		dprints(dipfile);
+	 	//dprints("/global/users/sidgurung/Lalpha/LyaRT/data/tables/dipolar/dipolar");
 #endif		
 		fgets(buf,20,fd);
 		i = 0;
