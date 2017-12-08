@@ -5,7 +5,7 @@ from scipy.interpolate import interp1d
 from mpl_toolkits.mplot3d import Axes3D
 import scipy.integrate as integrate
 from scipy.interpolate import UnivariateSpline
-
+import mpi4py
 import matplotlib
 # Force matplotlib to not use any Xwindows backend.
 matplotlib.use('Agg')
@@ -16,22 +16,24 @@ from struct import unpack
 import numpy as np
 import emcee
 from numpy.random import randn as randn
-import triangle
+#import triangle
+import corner
 from emcee.utils import MPIPool
-
+from pyLyaRT.runmodel import *
+from pyLyaRT.line_eqn import line_profile
 
 use_ptsampler = False
 
 if use_ptsampler:
 	from emcee import PTSampler
-	print 'running emcee PTSampler'
+	print 'running emcee PTSampler. Parallelizing'
 
 
 #### Define Geometry ####
 
 #Geom='ThinShell'
 #Geom='Wind'
-Geom='Biconical_Wind'
+Geom='THIN'
 
 #### Define Geometry ####
 
@@ -51,9 +53,9 @@ LyaRT_path="/home/CEFCA/aaorsi/LyaRT/src/"  #LyaRT source code
 
 ####### pick which parameters will be minimized by mcmc, be aware of  uncommenting  one of the posibilities  below #######
 
-parameters=['NH','Vmax','Z','theta']
-parameters=['NH','Vmax','theta']
-#parameters=['NH','Vmax']               # By default
+#parameters=['NH','Vmax','Z','theta']
+#parameters=['NH','Vmax','theta']
+parameters=['NH','Vmax']               # By default
 #parameters=['NH','Vmax','Z']
 
 ####### pick which parameters will be minimized by mcmc, be aware of  uncommenting  one of the posibilities  above #######
@@ -81,7 +83,7 @@ else:
 
 ### Choose number of walkers and iterations to be performed by emceee ####
 
-nwalkers,niter = 6, 200
+nwalkers,niter = 20, 1000
 
 ### Choose number of walkers and iterations to be performed by emceee ####
 
@@ -105,7 +107,7 @@ Dtheta=np.pi/2
 gauss_width=90.0 #km/s
 
 scaling=np.arange(0.7,1.31,0.05) # after re-calibrating to line peak flux. 
-shift=np.arange(-7.0,7.0,0.2) # \AA
+shift=np.arange(-10.0,10.0,0.2) # \AA
 
 
 
@@ -235,6 +237,9 @@ def gen_par_file_LyaRT(logNH,Vmax,gauss_width,logZ,Geom,dlambda=11.0,user=user_p
     Kth=Vth/C
     #---------------------------------------------
 
+
+
+
     #----------Transforming into Lyart units-----------
     X_min = -0.5*dlambda/((lambda_0+0.5*dlambda)*Kth)
     X_max=0.5*dlambda/((lambda_0 - 0.5*dlambda)*Kth)
@@ -269,17 +274,17 @@ def gen_par_file_LyaRT(logNH,Vmax,gauss_width,logZ,Geom,dlambda=11.0,user=user_p
 		
 
     # ---------------------------Defining Radius and Ndot----------------------------------------
-    if (Geom=="ThinShell"):
+    if (Geom=="THIN"):
         RSphere=kpc
         R_inner=0.9*RSphere
         Ndot=8*3.141592*NH*RSphere*vmax_1*1e-40 # (particles/sec in units of 1e-40s)
         mean_nH=10.0*NH/(RSphere)
-    if (Geom=="Wind"):
+    if (Geom=="WIND"):
         R_inner=0.1*kpc
         RSphere=500.0*R_inner
         Ndot=4*3.141592*NH*R_inner*vmax_1*1e-40 # (particles/sec in units of 1e-40s)
         mean_nH=NH/R_inner
-    if (Geom=="Biconical_Wind"):
+    if (Geom=="BICONE"):
         R_inner=0.1*kpc
         RSphere=500.0*R_inner
         Ndot=2.0*3.141592*NH*R_inner*vmax_1*1e-40 # (particles/sec in units of 1e-40s)
@@ -289,8 +294,8 @@ def gen_par_file_LyaRT(logNH,Vmax,gauss_width,logZ,Geom,dlambda=11.0,user=user_p
     #---------------Naming and opening the parameter files---------------------------------------
     
     model_name="%s_log_nH%.4f_vmax%.2f_log_Z%.2f"  % ( Geom ,  logNH , Vmax ,  logZ )
-    if (Geom=="Biconical_Wind"):
-        model_name="%s_log_nH%.4f_vmax%.2f_log_Z%.2f"  % ( 'BWind' ,  logNH , Vmax ,  logZ )
+    if (Geom=="BICONE"):
+        model_name="%s_log_nH%.4f_vmax%.2f_log_Z%.2f"  % ( 'BICONE' ,  logNH , Vmax ,  logZ )
     filename=param_dir+model_name+".data"
                         
     outfile=model_name+".data"
@@ -337,8 +342,9 @@ def gen_par_file_LyaRT(logNH,Vmax,gauss_width,logZ,Geom,dlambda=11.0,user=user_p
     return 0
     
 
-def spectralike(logNH,Vmax,gauss_width,logZ,scaling,shift,theta,Geom,wl_obs,f_obs,f_err,specnumber,wl_min=1195.0,wl_max=1237.0,wl_0=1215.668,theta_bins=5,user="/home/CEFCA/aaorsi/",in_dir="LyaRT/data/Params/grid/",out_dir="mcmcrun/"):
-    if Vmax>1500.0 or logNH>21.5 or Vmax<10.0 or logNH < 14 or logZ<-5.0 if theta<0 if theta>np.pi/2:
+def spectralike(logNH,Vmax,gauss_width,logZ,scaling,shift,theta,Geom,wl_obs,f_obs,f_err,specnumber,wl_min=1195.0,wl_max=1237.0,wl_0=1215.668,user="/Users/jemejia/",in_dir="LyaRT/data/Params/grid/",out_dir="mcmcrun/",theta_bins=5):
+	
+    if Vmax>1500.0 or logNH>21.5 or Vmax<10.0 or logNH < 14 or logZ<-5.0 or theta<0 or theta>np.pi/2:
         chi2=np.inf
     else:
         out_dir=user+out_dir
@@ -354,8 +360,8 @@ def spectralike(logNH,Vmax,gauss_width,logZ,scaling,shift,theta,Geom,wl_obs,f_ob
         centroid_obs=np.sum( np.multiply(f_obs,wl_obs) )/np.sum(f_obs)
         
         model_name="%s_log_nH%.4f_vmax%.2f_log_Z%.2f"  % ( Geom ,  logNH , Vmax ,  logZ )
-        if (Geom=="Biconical_Wind"):
-            model_name="%s_log_nH%.4f_vmax%.2f_log_Z%.2f"  % ( 'BWind' ,  logNH , Vmax ,  logZ )
+        if (Geom=="BICONE"):
+            model_name="%s_log_nH%.4f_vmax%.2f_log_Z%.2f"  % ( 'BICONE' ,  logNH , Vmax ,  logZ )
     
         outname=out_dir+model_name+".data"
         filename=in_dir+model_name+".data"
@@ -369,11 +375,16 @@ def spectralike(logNH,Vmax,gauss_width,logZ,scaling,shift,theta,Geom,wl_obs,f_ob
 #                call(['cd '+LyaRT_path])
                 os.chdir(LyaRT_path)
                 call([LyaRT_path+'LyaRT',filename,str(np.random.randint(100000))])
+		no=0
 #                print 'abrio'        
 #       sys.exit(0)
-                                    
+
+            
+	
         wavelt,wavel0t,interact,nscat, x,y,z,polar,azim=read_wave(outname)
-	if Geom=='Biconical_Wind':
+	
+
+	if Geom=='BICONE':
 		delta_th=np.pi/(2.0*theta_bins)
 		theta_values=np.arange(0,np.pi/2,delta_th)
 		argth=np.argmin(np.abs(theta-theta_values))
@@ -483,14 +494,16 @@ def spectralike(logNH,Vmax,gauss_width,logZ,scaling,shift,theta,Geom,wl_obs,f_ob
 			f_teo=scale*f_teo
 			num_chi=f_teo - f_obs            
 			den_chi=np.power(f_err,2)
+			
 			deg_free=np.float(len(f_obs))
+			
 			chi2a=1.0*np.sum(np.divide(np.power(num_chi,2),den_chi))/(deg_free-3)
 			chi2=np.min([chi2,chi2a])
 			if np.isnan(chi2): chi2=np.inf
 	fn = "spec_output_"+str(specnumber)+".out"
 	f = open(fn, "a")
-	escape_fraction=len(wavel)/(1.0*len(wavelt))
-	if Geom=='Biconical_Wind':
+	#escape_fraction=len(wavel)/(1.0*len(wavelt))
+	if Geom=='BICONE':
 		f.write(" ".join([str(logNH),"\t"+str(Vmax),"\t"+str(logZ),"\t"+str(theta_out),"\t"+str(escape_fraction),"\t"+str(chi2)]))
 	else:
 		f.write(" ".join([str(logNH),"\t"+str(Vmax),"\t"+str(logZ),"\t"+str(escape_fraction),"\t"+str(chi2)]))
@@ -503,11 +516,111 @@ def spectralike(logNH,Vmax,gauss_width,logZ,scaling,shift,theta,Geom,wl_obs,f_ob
 
     sys.stdout.flush()
     return -1.0*chi2
+
+
+
+
+
+
+def spectraeqnlike(logNH,Vmax,scaling,shift,Geom,wl_obs,f_obs,f_err,specnumber,wl_min=1195.0,wl_max=1237.0,wl_0=1215.668,user="/Users/jemejia/",in_dir="LyaRT/data/Params/grid/",out_dir="mcmcrun/"):
+    
+    C=299792458
+    KB=1.3806503e-23
+    MP=1.67262158e-27
+    T=10000.0
+    Vth=np.sqrt(2*KB*T/MP);
+    Kth=Vth/C;
+    lambda_0=1215.668    
+    d_lambda=0.136
+
+    if Vmax>1200.0 or logNH>22.0 or Vmax<10.0 or logNH < 18:
+        chi2=np.inf
+    else:
+        out_dir=user+out_dir
+        in_dir=user+in_dir
+        if not os.path.exists(out_dir):
+            os.mkdir(out_dir)
+    
+        d_wl=np.mean(wl_obs[1:]-wl_obs[:-1])
+	wl_teo=np.array([wl_min+d_wl*x for x in range(np.int((wl_max-wl_min)/(1.0*d_wl)))])
+	
+	X_teo=( (lambda_0/wl_teo) - 1 )/Kth
+	X_teo=X_teo[::-1]
+	
+	
+	flux_teo=line_profile( X_teo , Vmax , logNH , Geom )
+	#print  'logNH=',logNH,'Vmax=',Vmax
+	#print 'fteo=',flux_teo
+	#print 'Xteo=',X_teo
+	#print 'wlteo=',wl_teo
+	flux_teo=flux_teo[::-1] 
+ 
+        arg_fobs_max=np.argmax(f_obs)
+        fmax_obs=f_obs[arg_fobs_max]
+        centroid_obs=np.sum( np.multiply(f_obs,wl_obs) )/np.sum(f_obs)
+
+        centroid_teo=np.sum(np.multiply(flux_teo,wl_teo))/np.sum(flux_teo)
+        fmax_teo=np.amax(flux_teo)
+        f_teo_err = np.sqrt( flux_teo)*fmax_obs/fmax_teo              
+        f_teo=flux_teo*fmax_obs/fmax_teo              
+    
+        arg_max_teo=np.argmax(flux_teo)
+        arg_cent_teo=np.argmin( np.abs(wl_teo-centroid_teo) )
+        arg_cent_obs=np.argmin(np.abs(wl_obs-centroid_obs))
+    
+        #delta_low=np.amin((arg_cent_teo,arg_cent_obs))
+        delta_low=np.amin((arg_max_teo,arg_fobs_max))
+#	f_teo_func = interp1d(wl_teo, f_teo, kind='cubic',bounds_error=False,fill_value=0)                         
+	if len(wl_teo) < 2:
+		f_teo_func = interp1d([wl_min,wl_max],[0.0,0.0],bounds_error=False,fill_value=0)
+	else:	
+		f_teo_func = interp1d(wl_teo, f_teo, kind='linear',bounds_error=False,fill_value=0)                         
+
+	chi2=1000000000
+	for scale in scaling:
+		for dx in shift:
+			wl_obs_model=wl_obs + wl_teo[arg_max_teo]- wl_obs[arg_fobs_max] + dx  
+			len_teo=len(wl_teo);len_obs=len(wl_obs_model)
+			f_teo=f_teo_func(wl_obs_model)
+			f_teo=scale*f_teo
+			num_chi=f_teo - f_obs            
+			den_chi=np.power(f_err,2)
+			deg_free=np.float(len(f_obs))
+			
+			chi2a=1.0*np.sum(np.divide(np.power(num_chi,2),den_chi))/(deg_free-3)
+			chi2=np.min([chi2,chi2a])
+			if np.isnan(chi2): chi2=np.inf
+	fn = "spec_output_"+str(specnumber)+".out"
+	f = open(fn, "a")
+	#escape_fraction=len(wavel)/(1.0*len(wavelt))
+	#if Geom=='Biconical_Wind':
+	#	f.write(" ".join([str(logNH),"\t"+str(Vmax),"\t"+str(logZ),"\t"+str(theta_out),"\t"+str(escape_fraction),"\t"+str(chi2)]))
+	#else:
+        f.write(" ".join([str(logNH),"\t"+str(Vmax),"\t"+str(logZ),"\t"+str(chi2)]))
+	f.write("\n")
+	f.close()
+
+    #print 'chi2 = ',chi2
+    
+
+
+    sys.stdout.flush()
+    return -1.0*chi2
+
                                     
 
 def lnlike(params,Geom,wl_obs,f_obs,f_err,gauss_width,logZ,theta,scaling,shift,specnumber):
 	logNH,Vmax=params
 	return spectralike(logNH,Vmax,gauss_width,logZ,scaling,shift,theta,Geom,wl_obs,f_obs,f_err,specnumber)
+
+
+
+def lneqnlike(params,Geom,wl_obs,f_obs,f_err,scaling,shift,specnumber):
+	logNH,Vmax=params
+	return spectraeqnlike(logNH,Vmax,scaling,shift,Geom,wl_obs,f_obs,f_err,specnumber)
+
+
+
 
 def lnlikeZ(params,Geom,wl_obs,f_obs,f_err,gauss_width,theta,scaling,shift,specnumber):
 	logNH,Vmax,logZ=params
@@ -527,163 +640,137 @@ def lnlikeTH(params,Geom,wl_obs,f_obs,f_err,gauss_width,theta,logZ,scaling,shift
 
 
 
+for nspec in range(19):
+	wl_obs,f_obs,f_err=np.genfromtxt(in_spectrum_dir+ source + "_" + str(nspec) + ".data",unpack=1)
 
-wl_obs,f_obs,f_err=np.genfromtxt(in_spectrum_dir+ source + "_" + str(nspec) + ".data",unpack=1)
+        #----rescaling flux and error. Keep this order-----#
+	f_err=f_err/np.sum(f_obs)
+	f_obs=f_obs/np.sum(f_obs)
+        #----rescaling flux and error. Keep this order-----#
 
-#----rescaling flux and error. Keep this order-----#
-f_err=f_err/np.sum(f_obs)
-f_obs=f_obs/np.sum(f_obs)
-#----rescaling flux and error. Keep this order-----#
             
-#chi2=spectralike(logNH,Vmax,gauss_width,logZ,scaling,shift,Geom,wl_obs,f_obs,f_err)
-#print chi2
+        #chi2=spectralike(logNH,Vmax,gauss_width,logZ,scaling,shift,Geom,wl_obs,f_obs,f_err)
+        #print chi2
 
 
 
 
 
-
-pool = MPIPool(loadbalance = True)
-
-if not pool.is_master():
+	"""
+	pool = MPIPool(loadbalance = True)
+	
+	if not pool.is_master():
 	pool.wait()
 	sys.exit(0)
+	"""
 
 
 
-#sampler = emcee.EnsembleSampler(nwalkers, ndim, lnlike, args=(Geom,wl_obs,f_obs,f_err,gauss_width,logZ,scaling,shift,nspec),threads=nwalkers)
-if use_ptsampler:
-	# use a flat prior
-	def logp(x):
+
+
+       #sampler = emcee.EnsembleSampler(nwalkers, ndim, lnlike, args=(Geom,wl_obs,f_obs,f_err,gauss_width,logZ,scaling,shift,nspec),threads=nwalkers)
+	if use_ptsampler:
+            # use a flat prior
+            def logp(x):
 		return 0.0
 
-	ntemps = 20
+	    ntemps = 20
 	
-	#SAMPLER AND SEEDS ARE DEFINED ACCORDING TO THE MCMC PARAMETERS CHOSEN
-	if parameters==['NH','Vmax']:
+	    #SAMPLER AND SEEDS ARE DEFINED ACCORDING TO THE MCMC PARAMETERS CHOSEN
+	    if parameters==['NH','Vmax']:
 		pos = [[NH[i],V[i]] for i in range(nwalkers)]
-		sampler = PTSampler(ntemps,nwalkers,ndim,lnlike,logp,loglargs=(Geom,wl_obs,f_obs,f_err,gauss_width,theta,logZ,scaling,shift,nspec),pool=pool)
-	elif parameters==['NH','Vmax','Z']:
+		sampler = PTSampler(ntemps,nwalkers,ndim,lneqnlike,logp,loglargs=(Geom,wl_obs,f_obs,f_err,scaling,shift,nspec))#,pool=pool)
+	    elif parameters==['NH','Vmax','Z']:
 		pos = [[NH[i],V[i],Z[i]] for i in range(nwalkers)]
 		sampler = PTSampler(ntemps,nwalkers,ndim,lnlikeZ,logp,loglargs=(Geom,wl_obs,f_obs,f_err,gauss_width,theta,scaling,shift,nspec),pool=pool)
-	elif parameters==['NH','Vmax','Z','theta']:
+	    elif parameters==['NH','Vmax','Z','theta']:
 		pos = [[NH[i],V[i],Z[i],TH[i]] for i in range(nwalkers)]
 		sampler = PTSampler(ntemps,nwalkers,ndim,lnlikeZTH,logp,loglargs=(Geom,wl_obs,f_obs,f_err,gauss_width,scaling,shift,nspec),pool=pool)
-	elif parameters==['NH','Vmax','theta']:
+	    elif parameters==['NH','Vmax','theta']:
 		pos = [[NH[i],V[i],TH[i]] for i in range(nwalkers)]
 		sampler = PTSampler(ntemps,nwalkers,ndim,lnlikeTH,logp,loglargs=(Geom,wl_obs,f_obs,f_err,gauss_width,logZ,scaling,shift,nspec),pool=pool)
-	else:
+	    else:
 		pos = [[NH[i],V[i],Z[i]] for i in range(nwalkers)]
 		sampler = PTSampler(ntemps,nwalkers,ndim,lnlikeZ,logp,loglargs=(Geom,wl_obs,f_obs,f_err,gauss_width,theta,logZ,scaling,shift,nspec),pool=pool)
 
 	
-else:
-	#SAMPLER AND SEEDS ARE DEFINED ACCORDING TO THE MCMC PARAMETERS CHOSEN
-	if parameters==['NH','Vmax']:
-		pos = [[NH[i],V[i]] for i in range(nwalkers)]
-		sampler = emcee.EnsembleSampler(nwalkers, ndim, lnlike, args=(Geom,wl_obs,f_obs,f_err,gauss_width,logZ,scaling,shift,nspec),pool=pool)
-	elif parameters==['NH','Vmax','Z']:
-		pos = [[NH[i],V[i],Z[i]] for i in range(nwalkers)]
-		sampler = emcee.EnsembleSampler(nwalkers, ndim, lnlikeZ, args=(Geom,wl_obs,f_obs,f_err,gauss_width,scaling,shift,nspec),pool=pool)
-	elif parameters==['NH','Vmax','Z','theta']:
-		pos = [[NH[i],V[i],Z[i],TH[i]] for i in range(nwalkers)]
-		sampler = emcee.EnsembleSampler(nwalkers, ndim, lnlikeZTH, args=(Geom,wl_obs,f_obs,f_err,gauss_width,scaling,shift,nspec),pool=pool)
-	elif parameters==['NH','Vmax','theta']:
-		pos = [[NH[i],V[i],TH[i]] for i in range(nwalkers)]
-		sampler = emcee.EnsembleSampler(nwalkers, ndim, lnlikeTH, args=(Geom,wl_obs,f_obs,f_err,gauss_width,scaling,shift,nspec),pool=pool)
 	else:
-		pos = [[NH[i],V[i]] for i in range(nwalkers)]
-		sampler = emcee.EnsembleSampler(nwalkers, ndim, lnlike, args=(Geom,wl_obs,f_obs,f_err,gauss_width,scaling,shift,nspec),pool=pool)
+	    #SAMPLER AND SEEDS ARE DEFINED ACCORDING TO THE MCMC PARAMETERS CHOSEN
+		if parameters==['NH','Vmax']:
+                    pos = [[NH[i],V[i]] for i in range(nwalkers)]
+		    sampler = emcee.EnsembleSampler(nwalkers, ndim, lneqnlike, args=(Geom,wl_obs,f_obs,f_err,scaling,shift,nspec))#,pool=pool)
+
+
+		elif parameters==['NH','Vmax','Z']:
+                    pos = [[NH[i],V[i],Z[i]] for i in range(nwalkers)]
+		    sampler = emcee.EnsembleSampler(nwalkers, ndim, lnlikeZ, args=(Geom,wl_obs,f_obs,f_err,gauss_width,scaling,shift,nspec),pool=pool)
+		elif parameters==['NH','Vmax','Z','theta']:
+		    pos = [[NH[i],V[i],Z[i],TH[i]] for i in range(nwalkers)]
+		    sampler = emcee.EnsembleSampler(nwalkers, ndim, lnlikeZTH, args=(Geom,wl_obs,f_obs,f_err,gauss_width,scaling,shift,nspec),pool=pool)
+		elif parameters==['NH','Vmax','theta']:
+		    pos = [[NH[i],V[i],TH[i]] for i in range(nwalkers)]
+		    sampler = emcee.EnsembleSampler(nwalkers, ndim, lnlikeTH, args=(Geom,wl_obs,f_obs,f_err,gauss_width,scaling,shift,nspec),pool=pool)
+		else:
+		    pos = [[NH[i],V[i]] for i in range(nwalkers)]
+		    sampler = emcee.EnsembleSampler(nwalkers, ndim, lneqnlike, args=(Geom,wl_obs,f_obs,f_err,scaling,shift,nspec),pool=pool)
 
 
 
-print 'starting burn-in iterations'
-sys.stdout.flush()
-pos0, prob, state = sampler.run_mcmc(pos, 5)
-print 'done'
-sys.stdout.flush()
-
-sampler.reset()
-
-
-#f = open("chain.dat", "w")
-#f.close()
-
-
-#for result in sampler.sample(pos_end, iterations=10, storechain=False):
-#    position = result[0]
-#    f = open("chain.dat", "a")
-#    for k in range(position.shape[0]):
-#        f.write("{0:4d} {1:s}\n".format(k, " ".join(position[k])))
-#    fc.lose()
-
-
-
-
-fn = "spec_mcmc_new_"+str(nspec)+".out"
-f = open(fn, "w")
-f.close()
-print 'now running sampler with '+np.str(niter * nwalkers)+' total steps'
-sys.stdout.flush()
-for pos, prob, rstate in sampler.sample(pos0, prob, state, iterations=niter):
-    # Write the current position to a file, one line per walker                                                                                                                                                                                                                
-    f = open(fn, "a")
-    f.write("\n".join(["\t".join([str(q) for q in p]) for p in pos]))
-    #f.write("\n".join(["\t".join( pos.tolist()[i] +[prob.tolist()[i]] )  for i in range( len(prob) ) ] ) )
-    f.write("\n")
-    f.close()
-
-pool.close()
-
-print("Mean acceptance fraction: {0:.3f}".format(np.mean(sampler.acceptance_fraction)))
-
-
-#Plotting triangle plot that shows the model density  over each posible tuples of parameter projections
-samples = sampler.chain.reshape((-1, ndim))
-if parameters==['NH','Vmax']:
-	fig = triangle.corner(samples, labels=[r"$\log(N_H)$", r"$V_{\rm exp}$"])
-elif parameters==['NH','Vmax','Z']:
-	fig = triangle.corner(samples, labels=[r"$\log(N_H)$", r"$V_{\rm exp}$",r"$\log(Z/Z_{\odot})$"])
-elif parameters==['NH','Vmax','Z','theta']:
-	fig = triangle.corner(samples, labels=[r"$\log(N_H)$", r"$V_{\rm exp}$",r"$\log(Z/Z_{\odot})$",r"$\theta$"])
-elif parameters==['NH','Vmax','theta']:
-	fig = triangle.corner(samples, labels=[r"$\log(N_H)$", r"$V_{\rm exp}$",r"$\theta$"])
-else:
-	fig = triangle.corner(samples, labels=[r"$\log(N_H)$", r"$V_{\rm exp}$"])
+	print 'starting burn-in iterations'
+	sys.stdout.flush()
+	pos0, prob, state = sampler.run_mcmc(pos, 5)
+	print 'done'
+	sys.stdout.flush()
 	
-fig.savefig("triangle.png")
+	sampler.reset()
+
+
+        #f = open("chain.dat", "w")
+        #f.close()
+	
+
+        #for result in sampler.sample(pos_end, iterations=10, storechain=False):
+	#    position = result[0]
+	#    f = open("chain.dat", "a")
+	#    for k in range(position.shape[0]):
+	#        f.write("{0:4d} {1:s}\n".format(k, " ".join(position[k])))
+	#    fc.lose()
 
 
 
+	fn = "spec_mcmc_newest_"+str(nspec)+".out"
+	f = open(fn, "w")
+	f.close()
+	print 'now running sampler with '+np.str(niter * nwalkers)+' total steps'
+	sys.stdout.flush()
+	for pos, prob, rstate in sampler.sample(pos0, prob, state, iterations=niter):
+            # Write the current position to a file, one line per walker                                                                                                                                                                                                                
+            f = open(fn, "a")
+	    f.write("\n".join(["\t".join([str(q) for q in p]) for p in pos]))
+            #f.write("\n".join(["\t".join( pos.tolist()[i] +[prob.tolist()[i]] )  for i in range( len(prob) ) ] ) )
+	    f.write("\n")
+            f.close()
+
+        #pool.close()
+
+	print("Mean acceptance fraction: {0:.3f}".format(np.mean(sampler.acceptance_fraction)))
 
 
-"""
-try:
-    import matplotlib.pyplot as pl
-    from mpl_toolkits.mplot3d import Axes3D
-except ImportError:
-    print("Try installing matplotlib to generate some sweet plots...")
-else:
-    pl.figure()
-    for k in range(nwalkers):
-        pl.plot(sampler.chain[k, :, 0])
-    pl.xlabel("time")
-    pl.savefig("eggbox_time.png")
+        #Plotting corner plot that shows the model density  over each posible tuples of parameter projections
+	samples = sampler.chain.reshape((-1, ndim))
+	if parameters==['NH','Vmax']:
+		fig = corner.corner(samples, labels=[r"$\log(N_H)$", r"$V_{\rm exp}$"])
+	elif parameters==['NH','Vmax','Z']:
+		fig = corner.corner(samples, labels=[r"$\log(N_H)$", r"$V_{\rm exp}$",r"$\log(Z/Z_{\odot})$"])
+	elif parameters==['NH','Vmax','Z','theta']:
+		fig = corner.corner(samples, labels=[r"$\log(N_H)$", r"$V_{\rm exp}$",r"$\log(Z/Z_{\odot})$",r"$\theta$"])
+	elif parameters==['NH','Vmax','theta']:
+		fig = corner.corner(samples, labels=[r"$\log(N_H)$", r"$V_{\rm exp}$",r"$\theta$"])
+	else:
+		fig = corner.corner(samples, labels=[r"$\log(N_H)$", r"$V_{\rm exp}$"])
+	
+	fig.savefig("corner_"+str(nspec)+".png")
 
-    pl.figure(figsize=(8,8))
-    x, y = sampler.flatchain[:,0], sampler.flatchain[:,1]
-    pl.plot(x, y, "ok", ms=1, alpha=0.1)
-    pl.savefig("eggbox_2d.png")
-
-    fig = pl.figure()
-    ax = fig.add_subplot(111, projection="3d")
-
-    for k in range(nwalkers):
-        x, y = sampler.chain[k,:,0], sampler.chain[k,:,1]
-        z = sampler.lnprobability[k,:]
-        ax.scatter(x, y, z, marker="o", c="k", alpha=0.5, s=10)
-    pl.savefig("eggbox_3d.png")
-"""
 
 
 
