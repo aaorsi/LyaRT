@@ -339,8 +339,10 @@ int main(int argc, char *argv[])
 				BscatArr[ip] = flag_zero;
 				H_x = voigt(HList, P[ip].xp);
 	
-				if isnan(H_x) 
-					printf("H_x is nan\n");
+				if(isnan(H_x)) 
+				  {
+				    printf("H_x is nan\n");
+				  }
 
 //				H_x = 0.;     // H_x disables H scattering. 
 
@@ -668,11 +670,12 @@ escape:
 				exit(0);
 			}
 		}		
-
+/*
 #ifndef SILENT
 	printf("%ld %f %d\n",ip,P[ip].xp,P[ip].nscat);
+        
 #endif
-
+*/
 	}
 #ifndef SILENT
 	printf("Writing data \n");

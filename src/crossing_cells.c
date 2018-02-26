@@ -141,9 +141,10 @@ double crossing_cells(photon *P, int gtype, int ip)
 					P[ip].xp += (P[ip].ni * (vbulk0_x-vbulk_x) + P[ip].nj*(vbulk0_y-vbulk_y) + \
 						P[ip].nk*(vbulk0_z-vbulk_z))/vth;
 
-			if isnan(P[ip].xp)
-				printf("crossing_cells.c: xp is nan\n");
-
+			if( isnan(P[ip].xp))
+				  {
+				    printf("crossing_cells.c: xp is nan\n");
+				  }
 		
 			if (strcmp(GeomName,"Biconical_Wind")==0 && idc != 0)
 			{		
